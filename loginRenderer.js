@@ -1,3 +1,4 @@
+
 document.getElementById('loginForm').addEventListener('submit', (event) => {
     event.preventDefault();
   
@@ -5,7 +6,8 @@ document.getElementById('loginForm').addEventListener('submit', (event) => {
     const password = document.getElementById('password').value;
     console.log("User:", username)
     console.log("Pass:", password)
-
+        
+    
     window.electronAPI.login({ username, password });
   });
   
