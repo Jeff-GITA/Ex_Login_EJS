@@ -10,7 +10,9 @@ document.getElementById('loginForm').addEventListener('submit', (event) => {
     
     window.electronAPI.login({ username, password });
   });
+
   
+
 
 window.electronAPI.onLoginError((event, message) => {
   document.getElementById('error').textContent = message;
