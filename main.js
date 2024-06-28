@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain, net, ipcRenderer, screen } = require('elect
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
-// const psList = require('ps-list');
+// let psList = require('ps-list');
+let ps = require('ps-node');
 // import psList from 'ps-list';
 
 
@@ -52,9 +53,9 @@ function createLogin() {
   });
   mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
-  displayInformation();
-  systemInformation();
-  // softwareInformation();
+  // displayInformation();
+  // systemInformation();
+  softwareInformation();
 }
 
 function showMainWindow() {
@@ -198,11 +199,32 @@ ipcMain.on('detect_system', (event, data) => {
 
 async function softwareInformation(){
   
-  const processes = await psList();
+  // A simple pid lookup
+  ps.lookup({
+    command: 'node',
+    arguments: '--debug',
+    }, function(err, resultList ) {
+    if (err) {
+        throw new Error( err );
+    } else if (resultList.length > 0) {
+        resultList.forEach(process => {
+        console.log(`PID: ${process.pid}, Command: ${process.command}, Arguments: ${process.arguments.join(' ')}`);
+      });
+    } else {
+      console.log(`No process found`);
+    }
+
+    // resultList.forEach(function( process ){
+    //     if( process ){
+
+    //         console.log( 'PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+    //     }
+    // });
+  });
   
-  console.log("\n\n\n");
-  console.log("Software list:")
-  console.log(processes);
-  console.log("\n\n\n");
+  // console.log("\n\n\n");
+  // console.log("Software list:")
+  // console.log(processes);
+  // console.log("\n\n\n");
 };
 
