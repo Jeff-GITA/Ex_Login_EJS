@@ -2,8 +2,8 @@ const { app, BrowserWindow, ipcMain, net, ipcRenderer, screen } = require('elect
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
-// let psList = require('ps-list');
-let ps = require('ps-node');
+let psList = require('ps-list');
+// let ps = require('ps-node');
 // import psList from 'ps-list';
 
 
@@ -197,34 +197,44 @@ ipcMain.on('detect_system', (event, data) => {
 });
 
 
+function filterBlockedNames(objectList, blockedNames) {
+  // List to store objects with blocked names
+  const blockedObjects = [];
+  const nameBlockedList = [];
+  
+  // Loop through each object in the object list
+  objectList.forEach(obj => {
+    // Loop through each blocked name
+    blockedNames.forEach(blockedName => {
+      // Check if the blocked name is a substring of the object's name
+      if (obj.name.toLowerCase().includes(blockedName.toLowerCase())) {
+        // Save objects //
+        blockedObjects.push(obj);
+        
+        if (!nameBlockedList.includes(blockedName.toLowerCase())){
+          nameBlockedList.push(blockedName.toLowerCase());
+        };
+        
+      };
+    });
+  });
+
+
+  return blockedObjects, nameBlockedList;
+};
+
+
 async function softwareInformation(){
   
-  // A simple pid lookup
-  ps.lookup({
-    command: 'node',
-    arguments: '--debug',
-    }, function(err, resultList ) {
-    if (err) {
-        throw new Error( err );
-    } else if (resultList.length > 0) {
-        resultList.forEach(process => {
-        console.log(`PID: ${process.pid}, Command: ${process.command}, Arguments: ${process.arguments.join(' ')}`);
-      });
-    } else {
-      console.log(`No process found`);
-    }
 
-    // resultList.forEach(function( process ){
-    //     if( process ){
+    let processes = await psList();
+    const browserNames = ['chrome', 'opera', 'firefox', 'edge'];
+    let blockedNamesObj, blockedNamesList = filterBlockedNames(processes, browserNames);
 
-    //         console.log( 'PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
-    //     }
-    // });
-  });
-  
-  // console.log("\n\n\n");
-  // console.log("Software list:")
-  // console.log(processes);
-  // console.log("\n\n\n");
+    console.log("\n\n\n");
+    console.log("Browser Apps:");
+    console.log(blockedNamesList);
+    console.log("\n\n\n");
+
 };
 
