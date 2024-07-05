@@ -48,18 +48,26 @@ async function getUser(event, a, b) {
 }
 
 function createLogin() {
-
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  
+  // const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { width, height } = screen.getPrimaryDisplay().size;
   console.log(`\nDisplay bounds: W:${width}, H:${height}\n`);
+  
+  const actionTimer = 500;
+  var isMoving = false;
+  var isResizing = false;
+  var x_b, y_b, w_b, h_b;
+  
   mainWindow = new BrowserWindow({
     // Window properties //
     width: width,
     height: height,
+    show: false,
     // resizable: false,
     // movable: false,
     // minimizable: false,
     // maximizable: true,
-    // alwaysOnTop: true,
+    // alwaysOnTop: true,actualPos
     // fullscreenable: true,
     
     webPreferences: {
@@ -72,35 +80,82 @@ function createLogin() {
   mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
 
+  // mainWindow.once('ready-to-show', () => {
+    
+  // })
+
+  // mainWindow.maximize();
+
 
   // Cofigure windosw parameters //
-  // mainWindow.maximize();
-  // mainWindow.addEventListener("minimize", maximizing);
+  // 
+  // Always on top //
+  // mainWindow.setAlwaysOnTop(true);
+  const actualBounds = mainWindow.getBounds();
+    const actualPos=  mainWindow.getPosition();
+    x_b = actualBounds.x;
+    y_b = actualBounds.y;
+    // w_b = actualBounds.width;
+    // h_b = actualBounds.height;
+    w_b = width;
+    h_b = height;
+
+    mainWindow.show();
+
+  console.log("1 - Obtained bounds: ", x_b, y_b, w_b, h_b);
+  console.log("Initial Bounds:", mainWindow.getBounds());
+
   mainWindow.on('minimize', () => {
-    console.log("Minimized.");
-    
-    // const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    // console.log(`\nDisplay bounds: W:${width}, H:${height}\n`);
-    // Get the instance of the window that called this event
-    
-    // mainWindow.maximize();
-    // mainWindow.setSize(width, height);
-    // mainWindow.webContents.focus();
-    
-    // mainWindow.focus();
-    // mainWindow.setFullScreen(true)
+    console.log("Minimized."); 
+    mainWindow.maximize();
   });
   mainWindow.on("move", () => {
-    console.log("Moved.");
+    
+    if(!isMoving){
+      isMoving = true;
+      console.log("1 Move Bounds:", mainWindow.getBounds());
+      setTimeout(() => {
+        console.log("Moved...");
+        mainWindow.setPosition(x=x_b,y=y_b);
+        // mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+        console.log("2 Move Bounds:", mainWindow.getBounds());
+        isMoving = false;
+      }, actionTimer);
+    };
+    
+    
+    
   });
 
   mainWindow.on("hide", () => {
-    console.log("Hidded.");
+    console.log("Hidded...");
   });
 
   mainWindow.on("resize", () => {
-    console.log("Resized.");
+
+    if(!isResizing){
+      isResizing = true;
+      setTimeout(() => {
+        console.log("Resized...");
+        mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+        isResizing = false;
+      }, actionTimer);
+    };
+    
+    
   });
+
+  mainWindow.on("blur", () => {
+    console.log("Blur...");
+    // mainWindow.setAlwaysOnTop(true)
+    // mainWindow.focusOnWebView();
+    // mainWindow.focus();
+
+    // mainWindow.moveTop();
+    
+    console.log("Win is focused: ", mainWindow.isFocused());
+  });
+
 }
 
 
@@ -357,7 +412,7 @@ async function checkWarnings(){
 
 function sendWarnings(sendToken){
   console.log("\n Send warning to API:");
-  sendToken = 123456789;
+  // sendToken = 123456789;
   axios.post(`${INFO_URL}/information`, warningInfo, {
       headers: {
         'Content-Type' : 'application/json',
