@@ -2,19 +2,25 @@ const { app, BrowserWindow, ipcMain, net, ipcRenderer, screen } = require('elect
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
-let psList = require('ps-list');
+var psList = require('ps-list');
 // let ps = require('ps-node');
 // import psList from 'ps-list';
 
 
 // const API_URL = "https://jsonplaceholder.typicode.com/users"
 const API_URL = "https://5b9d91df-5241-4ae0-ab7d-6256341b374e.mock.pstmn.io"
+const INFO_URL = "https://ba504831-2a9f-4e6d-90e4-42e752be7d95.mock.pstmn.io"
 
-let mainWindow;
+var mainWindow;
+var warningWindow;
 // let loginWindow;
-let username, password;
+var username, password;
+var token;
 
-
+// Warning variables //
+var isMoreThan2Displays;
+var isRestrictedApps;
+var warningInfo;
 
 async function getUser(event, a, b) {
   try {
@@ -25,7 +31,8 @@ async function getUser(event, a, b) {
         password: b,
       }
     });
-    console.log(response.data);
+    token = response.data.token;
+    console.log(`\nUser Token: ${token}\n`);
     showMainWindow();
     // loginWindow.close();
 
@@ -41,22 +48,61 @@ async function getUser(event, a, b) {
 }
 
 function createLogin() {
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  console.log(`\nDisplay bounds: W:${width}, H:${height}\n`);
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 500,
+    // Window properties //
+    width: width,
+    height: height,
+    // resizable: false,
+    // movable: false,
+    // minimizable: false,
+    // maximizable: true,
+    // alwaysOnTop: true,
+    // fullscreenable: true,
+    
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      enableRemoteModule: false,
-      nodeIntegration: false,
+      // contextIsolation: true,
+      // // enableRemoteModule: false,
+      // nodeIntegration: true,
     },
   });
   mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
-  // displayInformation();
-  // systemInformation();
-  softwareInformation();
+
+
+  // Cofigure windosw parameters //
+  // mainWindow.maximize();
+  // mainWindow.addEventListener("minimize", maximizing);
+  mainWindow.on('minimize', () => {
+    console.log("Minimized.");
+    
+    // const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    // console.log(`\nDisplay bounds: W:${width}, H:${height}\n`);
+    // Get the instance of the window that called this event
+    
+    // mainWindow.maximize();
+    // mainWindow.setSize(width, height);
+    // mainWindow.webContents.focus();
+    
+    // mainWindow.focus();
+    // mainWindow.setFullScreen(true)
+  });
+  mainWindow.on("move", () => {
+    console.log("Moved.");
+  });
+
+  mainWindow.on("hide", () => {
+    console.log("Hidded.");
+  });
+
+  mainWindow.on("resize", () => {
+    console.log("Resized.");
+  });
 }
+
 
 function showMainWindow() {
   // mainWindow = new BrowserWindow({
@@ -75,8 +121,6 @@ function showMainWindow() {
   console.log("send credential...")
   mainWindow.webContents.send("send-credentials", {username, password});
   mainWindow.webContents.openDevTools();
-
-
 
 };
 
@@ -105,7 +149,7 @@ ipcMain.on('login', (event, credentials) => {
   // console.log("Credentials: ",username, password)
 
   getUser(event, username, password)
-    
+  
 });
 
 
@@ -113,13 +157,14 @@ ipcMain.on('login', (event, credentials) => {
 function displayInformation(){
   // Retrieve information about all monitors.
   const displays = screen.getAllDisplays();
-  const primaryDisplay = screen.getPrimaryDisplay()
-  const { width, height } = primaryDisplay.workAreaSize
-  console.log("Display information:")
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+  console.log("Display information:");
   console.log(displays);
-  console.log(`width:${width}, height:${height}`)
+  console.log(`width:${width}, height:${height}`);
   console.log("Number of displays: ",displays.length);
-  return displays
+
+  return displays;
 };
 
 ipcMain.on('detect_displays', (event, data) => {
@@ -199,8 +244,8 @@ ipcMain.on('detect_system', (event, data) => {
 
 function filterBlockedNames(objectList, blockedNames) {
   // List to store objects with blocked names
-  const blockedObjects = [];
-  const nameBlockedList = [];
+  var blockedObjects = [];
+  var nameBlockedList = [];
   
   // Loop through each object in the object list
   objectList.forEach(obj => {
@@ -223,18 +268,118 @@ function filterBlockedNames(objectList, blockedNames) {
   return blockedObjects, nameBlockedList;
 };
 
-
 async function softwareInformation(){
   
 
-    let processes = await psList();
-    const browserNames = ['chrome', 'opera', 'firefox', 'edge'];
-    let blockedNamesObj, blockedNamesList = filterBlockedNames(processes, browserNames);
+  var processes = await psList();
+  const browserNames = ['chrome', 'opera', 'firefox', 'edge'];
+  var blockedNamesObj, blockedNamesList = filterBlockedNames(processes, browserNames);
 
-    console.log("\n\n\n");
-    console.log("Browser Apps:");
-    console.log(blockedNamesList);
-    console.log("\n\n\n");
+  console.log("\n");
+  console.log("Browser Apps:");
+  console.log(blockedNamesList);
+  console.log("\n");
+
+  mainWindow.webContents.send("send_apps_info", blockedNamesList);
 
 };
 
+
+ipcMain.on('detect_apps', (event, data) => {
+  console.log("[Main]:")
+  console.log(data);
+  softwareInformation();
+});
+
+
+function createWarningWindow(){
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
+  warningWindow = new BrowserWindow({
+    // Window properties //
+    width: width/2,
+    height: height/2,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    alwaysOnTop: true,
+    
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      // contextIsolation: true,
+      // // enableRemoteModule: false,
+      // nodeIntegration: true,
+    },
+  });
+  warningWindow.loadFile('warning.html');
+  warningWindow.webContents.send("send_warning", warningInfo);
+  // warningWindow.webContents.openDevTools();
+
+  // configure time out //
+  console.log("\nTimer begin ...");
+  setTimeout(() => {
+    console.log("\nTimer Ends ...");
+    warningWindow.close();
+  }, 5000);
+
+};
+
+async function checkWarnings(){
+
+  // Display info //
+  var displays = screen.getAllDisplays();
+  isMoreThan2Displays = displays.length >= 2;
+
+  // Restricted apps //
+  var processes = await psList();
+  const browserNames = ['chrome', 'opera', 'firefox', 'edge'];
+  var blockedNamesObj, blockedNamesList = filterBlockedNames(processes, browserNames);
+
+  isRestrictedApps = blockedNamesList.length >= 1;
+
+  console.log("\nChecking warnings:");
+  console.log("isMoreThan2Displays:", isMoreThan2Displays);
+  console.log("isRestrictedApps:", isRestrictedApps);
+
+  warningInfo = {
+    "displays": displays.length,
+    "apps": blockedNamesList,
+  };
+
+  if(isMoreThan2Displays || isRestrictedApps){
+    console.log("\nWarning!!\n");
+    createWarningWindow();
+  };
+
+};
+
+function sendWarnings(sendToken){
+  console.log("\n Send warning to API:");
+  sendToken = 123456789;
+  axios.post(`${INFO_URL}/information`, warningInfo, {
+      headers: {
+        'Content-Type' : 'application/json',
+      },
+      params: {
+        token: sendToken,
+      },
+    })
+  .then(function (response) {
+    console.log("\n Sending warning information using axios:");
+    console.log(response.data);
+  })
+  .catch(function (error) {
+    console.log(error);
+  });
+};
+
+ipcMain.on('check_warnings', (event, data) => {
+  console.log("[Main]:")
+  console.log(data);
+  checkWarnings();
+  sendWarnings(token);
+  console.log(`\n2 - User Token: ${token}\n`);
+
+});
