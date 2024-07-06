@@ -49,20 +49,22 @@ async function getUser(event, a, b) {
 
 function createLogin() {
   
-  // const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const { width, height } = screen.getPrimaryDisplay().size;
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  // const { width, height } = screen.getPrimaryDisplay().size;
   console.log(`\nDisplay bounds: W:${width}, H:${height}\n`);
   
   const actionTimer = 500;
   var isMoving = false;
   var isResizing = false;
   var x_b, y_b, w_b, h_b;
+  var isReadyToControl = false;
+  var isMaxInitial = false;
   
   mainWindow = new BrowserWindow({
     // Window properties //
     width: width,
     height: height,
-    show: false,
+    // show: false,
     // resizable: false,
     // movable: false,
     // minimizable: false,
@@ -77,33 +79,39 @@ function createLogin() {
       // nodeIntegration: true,
     },
   });
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
-
+  mainWindow.maximize();
   // mainWindow.once('ready-to-show', () => {
     
   // })
 
-  // mainWindow.maximize();
+  
 
 
   // Cofigure windosw parameters //
   // 
   // Always on top //
   // mainWindow.setAlwaysOnTop(true);
-  const actualBounds = mainWindow.getBounds();
+
+  
+  setTimeout(()=>{
+    const actualBounds = mainWindow.getBounds();
     const actualPos=  mainWindow.getPosition();
     x_b = actualBounds.x;
     y_b = actualBounds.y;
-    // w_b = actualBounds.width;
-    // h_b = actualBounds.height;
-    w_b = width;
-    h_b = height;
+    w_b = actualBounds.width;
+    h_b = actualBounds.height;
+    // w_b = width;
+    // h_b = height;
 
-    mainWindow.show();
+    console.log("\n1 - Obtained bounds: ", x_b, y_b, w_b, h_b);
+    console.log("isMax:", mainWindow.isMaximized());
+    console.log("Initial Bounds:", mainWindow.getBounds());
+  },50);
+  
+  
 
-  console.log("1 - Obtained bounds: ", x_b, y_b, w_b, h_b);
-  console.log("Initial Bounds:", mainWindow.getBounds());
 
   mainWindow.on('minimize', () => {
     console.log("Minimized."); 
@@ -113,11 +121,11 @@ function createLogin() {
     
     if(!isMoving){
       isMoving = true;
-      console.log("1 Move Bounds:", mainWindow.getBounds());
+      console.log("\n1 Move Bounds:", mainWindow.getBounds());
       setTimeout(() => {
         console.log("Moved...");
-        mainWindow.setPosition(x=x_b,y=y_b);
-        // mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+        // mainWindow.setPosition(x=x_b,y=y_b);
+        mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
         console.log("2 Move Bounds:", mainWindow.getBounds());
         isMoving = false;
       }, actionTimer);
@@ -135,9 +143,12 @@ function createLogin() {
 
     if(!isResizing){
       isResizing = true;
+      console.log("\n1 Resize Bounds:", mainWindow.getBounds());
       setTimeout(() => {
         console.log("Resized...");
         mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+        mainWindow.setSize(w_b, h_b);
+        console.log("2 Resize Bounds:", mainWindow.getBounds());
         isResizing = false;
       }, actionTimer);
     };
@@ -156,7 +167,9 @@ function createLogin() {
     console.log("Win is focused: ", mainWindow.isFocused());
   });
 
-}
+};//create
+
+
 
 
 function showMainWindow() {
