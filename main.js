@@ -68,15 +68,15 @@ function createLogin() {
   
   mainWindow = new BrowserWindow({
     // Window properties //
-    width: displayBounds.width,
-    height: displayBounds.height,
+    width: displayBounds.width/2,
+    height: displayBounds.height/2,
     // kiosk: true,
-    // show: false,
-    // resizable: false,
-    // movable: false,
-    // minimizable: false,
+    show: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
     // maximizable: true,
-    // alwaysOnTop: true,actualPos
+    alwaysOnTop: true,
     // fullscreenable: true,
     
     webPreferences: {
@@ -88,7 +88,13 @@ function createLogin() {
   });
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
-  mainWindow.maximize();
+
+  mainWindow.once('ready-to-show', () => {
+    console.log("Ready to show...")
+    mainWindow.maximize();
+    mainWindow.show()
+  })
+  
   // mainWindow.once('ready-to-show', () => {
     
   // })
@@ -117,63 +123,75 @@ function createLogin() {
     console.log("falseInitial Bounds:", mainWindow.getBounds());
   },50);
   
-  
-
-
-  mainWindow.on('minimize', () => {
-    console.log("Minimized."); 
-    mainWindow.maximize();
-  });
-  mainWindow.on("move", () => {
+  // mainWindow.on('minimize', () => {
+  //   console.log("Minimized."); 
+  //   mainWindow.maximize();
+  // });
+  // mainWindow.on("move", () => {
     
-    if(!isMoving){
-      isMoving = true;
-      console.log("\n1 Move Bounds:", mainWindow.getBounds());
-      setTimeout(() => {
-        console.log("Moved...");
-        // mainWindow.setPosition(x=x_b,y=y_b);
-        mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-        console.log("2 Move Bounds:", mainWindow.getBounds());
-        isMoving = false;
-      }, actionTimer);
-    };
+  //   if(!isMoving){
+  //     isMoving = true;
+  //     console.log("\n1 Move Bounds:", mainWindow.getBounds());
+  //     setTimeout(() => {
+  //       console.log("Moved...");
+  //       // mainWindow.setPosition(x=x_b,y=y_b);
+  //       mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+  //       console.log("2 Move Bounds:", mainWindow.getBounds());
+  //       isMoving = false;
+  //     }, actionTimer);
+  //   };
     
     
     
-  });
+  // });
 
   mainWindow.on("hide", () => {
     console.log("Hidded...");
   });
 
-  mainWindow.on("resize", () => {
-
-    if(!isResizing){
-      isResizing = true;
-      console.log("\n1 Resize Bounds:", mainWindow.getBounds());
-      setTimeout(() => {
-        console.log("Resized...");
-        mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-        mainWindow.setSize(w_b, h_b);
-        console.log("2 Resize Bounds:", mainWindow.getBounds());
-        isResizing = false;
-      }, actionTimer);
-    };
-    
-    
+  mainWindow.on("focus", () => {
+    console.log("Focus...");
   });
+
+  mainWindow.on("show", () => {
+    console.log("Show...");
+  });
+
+  mainWindow.on("restore", () => {
+    console.log("Show...");
+  });
+
+  mainWindow.on("enter-full-screen", () => {
+    console.log("enter-full-screen...");
+  });
+
+
+
+  // mainWindow.on("resize", () => {
+
+  //   if(!isResizing){
+  //     isResizing = true;
+  //     console.log("\n1 Resize Bounds:", mainWindow.getBounds());
+  //     setTimeout(() => {
+  //       console.log("Resized...");
+  //       mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+  //       mainWindow.setSize(w_b, h_b);
+  //       console.log("2 Resize Bounds:", mainWindow.getBounds());
+  //       isResizing = false;
+  //     }, actionTimer);
+  //   };
+  // });
 
   mainWindow.on("blur", () => {
     console.log("Blur...");
     
     console.log("1 - Win is focused: ", mainWindow.isFocused());
     mainWindow.focus();  
+    mainWindow.moveTop();
     console.log("2 - Win is focused: ", mainWindow.isFocused());
   });
 
 };//create
-
-
 
 
 function showMainWindow() {
@@ -370,8 +388,8 @@ function createWarningWindow(){
 
   warningWindow = new BrowserWindow({
     // Window properties //
-    width: width/2,
-    height: height/2,
+    width: width,
+    height: height,
     resizable: false,
     movable: false,
     minimizable: false,
@@ -394,6 +412,7 @@ function createWarningWindow(){
   setTimeout(() => {
     console.log("\nTimer Ends ...");
     warningWindow.close();
+    mainWindow.setAlwaysOnTop(true);
   }, 5000);
 
 };
@@ -422,6 +441,7 @@ async function checkWarnings(){
 
   if(isMoreThan2Displays || isRestrictedApps){
     console.log("\nWarning!!\n");
+    mainWindow.setAlwaysOnTop(false)
     createWarningWindow();
   };
 
