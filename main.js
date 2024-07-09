@@ -50,10 +50,16 @@ async function getUser(event, a, b) {
 function createLogin() {
   
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const displayBounds = screen.getPrimaryDisplay().bounds;
+  const workArea = screen.getPrimaryDisplay().workArea;
+
   // const { width, height } = screen.getPrimaryDisplay().size;
-  console.log(`\nDisplay bounds: W:${width}, H:${height}\n`);
+  console.log(`\nDisplay workAreaSize: W:${width}, H:${height}\n`);
+  console.log("Display bounds:", displayBounds);
+  console.log("Display workArea:", workArea);
+
   
-  const actionTimer = 500;
+  const actionTimer = 100;
   var isMoving = false;
   var isResizing = false;
   var x_b, y_b, w_b, h_b;
@@ -62,8 +68,9 @@ function createLogin() {
   
   mainWindow = new BrowserWindow({
     // Window properties //
-    width: width,
-    height: height,
+    width: displayBounds.width,
+    height: displayBounds.height,
+    // kiosk: true,
     // show: false,
     // resizable: false,
     // movable: false,
@@ -107,7 +114,7 @@ function createLogin() {
 
     console.log("\n1 - Obtained bounds: ", x_b, y_b, w_b, h_b);
     console.log("isMax:", mainWindow.isMaximized());
-    console.log("Initial Bounds:", mainWindow.getBounds());
+    console.log("falseInitial Bounds:", mainWindow.getBounds());
   },50);
   
   
@@ -158,13 +165,10 @@ function createLogin() {
 
   mainWindow.on("blur", () => {
     console.log("Blur...");
-    // mainWindow.setAlwaysOnTop(true)
-    // mainWindow.focusOnWebView();
-    // mainWindow.focus();
-
-    // mainWindow.moveTop();
     
-    console.log("Win is focused: ", mainWindow.isFocused());
+    console.log("1 - Win is focused: ", mainWindow.isFocused());
+    mainWindow.focus();  
+    console.log("2 - Win is focused: ", mainWindow.isFocused());
   });
 
 };//create
