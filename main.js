@@ -1,8 +1,9 @@
-const { app, BrowserWindow, ipcMain, net, ipcRenderer, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, net, ipcRenderer, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
 var psList = require('ps-list');
+const fs = require('fs');
 // let ps = require('ps-node');
 // import psList from 'ps-list';
 
@@ -387,14 +388,37 @@ function createWarningWindow(){
   });
   warningWindow.loadFile('warning.html');
   warningWindow.webContents.send("send_warning", warningInfo);
-  // warningWindow.webContents.openDevTools();
+  warningWindow.webContents.openDevTools();
 
   // configure time out //
   console.log("\nTimer begin ...");
-  setTimeout(() => {
-    console.log("\nTimer Ends ...");
+
+  ipcMain.on('close_warning', (event, dataUrl) => {
+    console.log("\nImage:");
+    // console.log(dataUrl);
+    // const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+    // const screenshotPath = path.join(app.getPath('pictures'), 'screenshot.png');
+
+    // fs.writeFile(screenshotPath, base64Data, 'base64', (err) => {
+    //   if (err) {
+    //     console.error('Failed to save screenshot:', err);
+    //     event.reply('save-screenshot-response', { success: false });
+    //   } else {
+    //     console.log('Screenshot saved to:', screenshotPath);
+    //     event.reply('save-screenshot-response', { success: true, path: screenshotPath });
+    //   }
+    // });
+
+    // Close warning window //
     warningWindow.close();
-  }, 5000);
+    captureScreen();
+    console.log("\nTimer Ends ...");
+  });
+  
+  // setTimeout(() => {
+  //   console.log("\nTimer Ends ...");
+  //   warningWindow.close();
+  // }, 5000);
 
 };
 
@@ -455,3 +479,60 @@ ipcMain.on('check_warnings', (event, data) => {
   console.log(`\n2 - User Token: ${token}\n`);
 
 });
+
+
+// async function captureScreen(){
+
+
+
+//   const contents = mainWindow.webContents;
+//   // capture the target page's screenshot
+//   const image = await contents.capturePage();
+          
+//   // specify the custom file path
+//   const filePath = "screenshot.png";
+
+//   // write the screenshot into the file path
+//   fs.writeFile(filePath, image.toPNG(), (err) => {
+
+//       if (err) {
+//           console.error("Error saving screenshot:", err);
+//       } else {
+//           console.log("Screenshot saved to:", filePath);
+//       }
+//   });
+// };
+
+
+
+
+
+
+async function captureScreen(){
+  const displayBounds = screen.getPrimaryDisplay().bounds;
+  W = displayBounds.width;
+  H = displayBounds.height;
+  console.log("Capturing screen...")
+  const sources = await desktopCapturer.getSources({ 
+    types: ['screen'],
+    thumbnailSize: {
+      width: W,
+      height: H,
+    } 
+  });
+  
+  if (sources.length > 0) {
+    const screenSource = sources[0];
+    
+    return new Promise((resolve, reject) => {
+      const screenshotPath = path.join('screenshot.png');
+      fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(screenshotPath);
+        }
+      });
+    });
+  }
+};
