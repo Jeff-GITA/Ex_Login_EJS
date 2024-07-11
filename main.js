@@ -69,8 +69,11 @@ function createLogin() {
   
   mainWindow = new BrowserWindow({
     // Window properties //
+    x: displayBounds.x,
+    y: displayBounds.y,
     width: displayBounds.width,
     height: displayBounds.height,
+    // fullscreen: true,
     // kiosk: true,
     // show: false,
     // resizable: false,
@@ -90,34 +93,33 @@ function createLogin() {
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
   mainWindow.maximize();
-  // mainWindow.once('ready-to-show', () => {
     
-  // })
-
+  
   
 
-
-  // Cofigure windosw parameters //
-  // 
-  // Always on top //
-  // mainWindow.setAlwaysOnTop(true);
-
-  
-  setTimeout(()=>{
+  mainWindow.on("maximize", () => {
+    console.log("\nMaximize."); 
+    console.log("Max screen Bounds:", mainWindow.getBounds());
     const actualBounds = mainWindow.getBounds();
     const actualPos=  mainWindow.getPosition();
     x_b = actualBounds.x;
     y_b = actualBounds.y;
     w_b = actualBounds.width;
     h_b = actualBounds.height;
-    // w_b = width;
-    // h_b = height;
-
-    console.log("\n1 - Obtained bounds: ", x_b, y_b, w_b, h_b);
-    console.log("isMax:", mainWindow.isMaximized());
-    console.log("falseInitial Bounds:", mainWindow.getBounds());
-  },50);
+    console.log("\nObtained bounds: ", x_b, y_b, w_b, h_b);
+    console.log("isMax:", mainWindow.isMaximized(), " - FS:", mainWindow.isFullScreen());
+    console.log("Initial Bounds:", mainWindow.getBounds());
+  });
   
+  mainWindow.on('enter-full-screen', () => {
+    console.log("enter-full-screen."); 
+    console.log("full screen Bounds:", mainWindow.getBounds());
+  });
+
+  mainWindow.on('enter-html-full-screen', () => {
+    console.log("enter-html-full-screen."); 
+    console.log("html full screen Bounds:", mainWindow.getBounds());
+  });
   
 
 
@@ -126,18 +128,19 @@ function createLogin() {
     mainWindow.maximize();
   });
   mainWindow.on("move", () => {
-    
-    if(!isMoving){
-      isMoving = true;
-      console.log("\n1 Move Bounds:", mainWindow.getBounds());
-      setTimeout(() => {
-        console.log("Moved...");
-        // mainWindow.setPosition(x=x_b,y=y_b);
-        mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-        console.log("2 Move Bounds:", mainWindow.getBounds());
-        isMoving = false;
-      }, actionTimer);
-    };
+    console.log("\nMoved...");
+    console.log("Move Bounds:", mainWindow.getBounds());
+    // if(!isMoving){
+    //   isMoving = true;
+    //   console.log("\n1 Move Bounds:", mainWindow.getBounds());
+    //   setTimeout(() => {
+    //     console.log("Moved...");
+    //     // mainWindow.setPosition(x=x_b,y=y_b);
+    //     mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+    //     console.log("2 Move Bounds:", mainWindow.getBounds());
+    //     isMoving = false;
+    //   }, actionTimer);
+    // };
     
     
     
@@ -148,18 +151,19 @@ function createLogin() {
   });
 
   mainWindow.on("resize", () => {
-
-    if(!isResizing){
-      isResizing = true;
-      console.log("\n1 Resize Bounds:", mainWindow.getBounds());
-      setTimeout(() => {
-        console.log("Resized...");
-        mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-        mainWindow.setSize(w_b, h_b);
-        console.log("2 Resize Bounds:", mainWindow.getBounds());
-        isResizing = false;
-      }, actionTimer);
-    };
+    console.log("\nResized...");
+    console.log("Resize Bounds:", mainWindow.getBounds());
+    // if(!isResizing){
+    //   isResizing = true;
+    //   console.log("\n1 Resize Bounds:", mainWindow.getBounds());
+    //   setTimeout(() => {
+    //     console.log("Resized...");
+    //     mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+    //     mainWindow.setSize(w_b, h_b);
+    //     console.log("2 Resize Bounds:", mainWindow.getBounds());
+    //     isResizing = false;
+    //   }, actionTimer);
+    // };
     
     
   });
@@ -394,33 +398,14 @@ function createWarningWindow(){
   console.log("\nTimer begin ...");
 
   ipcMain.on('close_warning', (event, dataUrl) => {
-    console.log("\nImage:");
-    // console.log(dataUrl);
-    // const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
-    // const screenshotPath = path.join(app.getPath('pictures'), 'screenshot.png');
-
-    // fs.writeFile(screenshotPath, base64Data, 'base64', (err) => {
-    //   if (err) {
-    //     console.error('Failed to save screenshot:', err);
-    //     event.reply('save-screenshot-response', { success: false });
-    //   } else {
-    //     console.log('Screenshot saved to:', screenshotPath);
-    //     event.reply('save-screenshot-response', { success: true, path: screenshotPath });
-    //   }
-    // });
-
-    // Close warning window //
+    
     warningWindow.close();
     captureScreen();
     console.log("\nTimer Ends ...");
   });
   
-  // setTimeout(() => {
-  //   console.log("\nTimer Ends ...");
-  //   warningWindow.close();
-  // }, 5000);
-
 };
+
 
 async function checkWarnings(){
 
@@ -481,58 +466,35 @@ ipcMain.on('check_warnings', (event, data) => {
 });
 
 
-// async function captureScreen(){
-
-
-
-//   const contents = mainWindow.webContents;
-//   // capture the target page's screenshot
-//   const image = await contents.capturePage();
-          
-//   // specify the custom file path
-//   const filePath = "screenshot.png";
-
-//   // write the screenshot into the file path
-//   fs.writeFile(filePath, image.toPNG(), (err) => {
-
-//       if (err) {
-//           console.error("Error saving screenshot:", err);
-//       } else {
-//           console.log("Screenshot saved to:", filePath);
-//       }
-//   });
-// };
-
-
-
-
-
-
-async function captureScreen(){
+function captureScreen(){
   const displayBounds = screen.getPrimaryDisplay().bounds;
   W = displayBounds.width;
   H = displayBounds.height;
   console.log("Capturing screen...")
-  const sources = await desktopCapturer.getSources({ 
+  const sources = desktopCapturer.getSources({ 
     types: ['screen'],
-    thumbnailSize: {
-      width: W,
-      height: H,
-    } 
+    thumbnailSize: {width:W, height:H,} 
+  })
+  .then((sources) => {
+    if (sources.length > 0) {
+      console.log("saving screenshot...")
+      const screenSource = sources[0];
+      new Promise((resolve, reject) => {
+        const screenshotPath = path.join('screenshot.png');
+        fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(screenshotPath);
+          }
+        })
+      })
+    }
+  })
+  .catch((error) => {
+    console.log("Error screenshot...")
+    console.error(error); // 'Operation failed!' if success is false
   });
-  
-  if (sources.length > 0) {
-    const screenSource = sources[0];
-    
-    return new Promise((resolve, reject) => {
-      const screenshotPath = path.join('screenshot.png');
-      fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(screenshotPath);
-        }
-      });
-    });
-  }
 };
+
+
