@@ -11,6 +11,7 @@ detectDisplays: (data) => ipcRenderer.send('detect_displays', data),
 detectSystem: (data) => ipcRenderer.send('detect_system', data),
 detectApps: (data) => ipcRenderer.send('detect_apps', data),
 checkWarnings: (data) => ipcRenderer.send('check_warnings', data),
+closeWarning: (data) => ipcRenderer.send('close_warning', data),
 
 // Main to Render //
 onLoginError: (callback) => ipcRenderer.on('login-error', callback),

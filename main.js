@@ -1,10 +1,10 @@
-const { app, BrowserWindow, ipcMain, net, ipcRenderer, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
 var psList = require('ps-list');
-// let ps = require('ps-node');
-// import psList from 'ps-list';
+const fs = require('fs');
+;
 
 
 // const API_URL = "https://jsonplaceholder.typicode.com/users"
@@ -58,7 +58,6 @@ function createLogin() {
   console.log("Display bounds:", displayBounds);
   console.log("Display workArea:", workArea);
 
-  
   const actionTimer = 100;
   var isMoving = false;
   var isResizing = false;
@@ -68,14 +67,14 @@ function createLogin() {
   
   mainWindow = new BrowserWindow({
     // Window properties //
-    width: displayBounds.width/2,
-    height: displayBounds.height/2,
+    width: displayBounds.width,
+    height: displayBounds.height,
     // kiosk: true,
     show: false,
     resizable: false,
     movable: false,
     minimizable: false,
-    // maximizable: true,
+    maximizable: true,
     alwaysOnTop: true,
     // fullscreenable: true,
     
@@ -95,55 +94,6 @@ function createLogin() {
     mainWindow.show()
   })
   
-  // mainWindow.once('ready-to-show', () => {
-    
-  // })
-
-  
-
-
-  // Cofigure windosw parameters //
-  // 
-  // Always on top //
-  // mainWindow.setAlwaysOnTop(true);
-
-  
-  setTimeout(()=>{
-    const actualBounds = mainWindow.getBounds();
-    const actualPos=  mainWindow.getPosition();
-    x_b = actualBounds.x;
-    y_b = actualBounds.y;
-    w_b = actualBounds.width;
-    h_b = actualBounds.height;
-    // w_b = width;
-    // h_b = height;
-
-    console.log("\n1 - Obtained bounds: ", x_b, y_b, w_b, h_b);
-    console.log("isMax:", mainWindow.isMaximized());
-    console.log("falseInitial Bounds:", mainWindow.getBounds());
-  },50);
-  
-  // mainWindow.on('minimize', () => {
-  //   console.log("Minimized."); 
-  //   mainWindow.maximize();
-  // });
-  // mainWindow.on("move", () => {
-    
-  //   if(!isMoving){
-  //     isMoving = true;
-  //     console.log("\n1 Move Bounds:", mainWindow.getBounds());
-  //     setTimeout(() => {
-  //       console.log("Moved...");
-  //       // mainWindow.setPosition(x=x_b,y=y_b);
-  //       mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-  //       console.log("2 Move Bounds:", mainWindow.getBounds());
-  //       isMoving = false;
-  //     }, actionTimer);
-  //   };
-    
-    
-    
-  // });
 
   mainWindow.on("hide", () => {
     console.log("Hidded...");
@@ -164,24 +114,7 @@ function createLogin() {
   mainWindow.on("enter-full-screen", () => {
     console.log("enter-full-screen...");
   });
-
-
-
-  // mainWindow.on("resize", () => {
-
-  //   if(!isResizing){
-  //     isResizing = true;
-  //     console.log("\n1 Resize Bounds:", mainWindow.getBounds());
-  //     setTimeout(() => {
-  //       console.log("Resized...");
-  //       mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-  //       mainWindow.setSize(w_b, h_b);
-  //       console.log("2 Resize Bounds:", mainWindow.getBounds());
-  //       isResizing = false;
-  //     }, actionTimer);
-  //   };
-  // });
-
+  
   mainWindow.on("blur", () => {
     console.log("Blur...");
     
@@ -227,6 +160,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    // Envio del log de cierre //
     app.quit();
   }
 });
@@ -331,7 +265,6 @@ ipcMain.on('detect_system', (event, data) => {
     
 });
 
-
 function filterBlockedNames(objectList, blockedNames) {
   // List to store objects with blocked names
   var blockedObjects = [];
@@ -369,18 +302,15 @@ async function softwareInformation(){
   console.log("Browser Apps:");
   console.log(blockedNamesList);
   console.log("\n");
-
   mainWindow.webContents.send("send_apps_info", blockedNamesList);
 
 };
-
 
 ipcMain.on('detect_apps', (event, data) => {
   console.log("[Main]:")
   console.log(data);
   softwareInformation();
 });
-
 
 function createWarningWindow(){
 
@@ -390,10 +320,11 @@ function createWarningWindow(){
     // Window properties //
     width: width,
     height: height,
+    show: false,
     resizable: false,
     movable: false,
     minimizable: false,
-    maximizable: false,
+    maximizable: true,
     alwaysOnTop: true,
     
     webPreferences: {
@@ -405,15 +336,22 @@ function createWarningWindow(){
   });
   warningWindow.loadFile('warning.html');
   warningWindow.webContents.send("send_warning", warningInfo);
-  // warningWindow.webContents.openDevTools();
 
+  warningWindow.once('ready-to-show', () => {
+    warningWindow.maximize();
+    warningWindow.show();
+  })
+  
   // configure time out //
   console.log("\nTimer begin ...");
-  setTimeout(() => {
-    console.log("\nTimer Ends ...");
+
+  ipcMain.on('close_warning', (event, data) => {
+    // Close warning window //
     warningWindow.close();
-    mainWindow.setAlwaysOnTop(true);
-  }, 5000);
+    captureScreen()//.then().catch();
+    console.log("\nTimer Ends ...");
+    setWindowProperties();
+  });
 
 };
 
@@ -444,7 +382,14 @@ async function checkWarnings(){
     mainWindow.setAlwaysOnTop(false)
     createWarningWindow();
   };
+};
 
+function setWindowProperties(){
+  mainWindow.setAlwaysOnTop(true);
+  mainWindow.minimizable = false;
+  mainWindow.resizable = false;
+  mainWindow.movable = false;
+  mainWindow.maximizable = true;
 };
 
 function sendWarnings(sendToken){
@@ -456,6 +401,7 @@ function sendWarnings(sendToken){
       },
       params: {
         token: sendToken,
+        "type": "waring",
       },
     })
   .then(function (response) {
@@ -473,5 +419,63 @@ ipcMain.on('check_warnings', (event, data) => {
   checkWarnings();
   sendWarnings(token);
   console.log(`\n2 - User Token: ${token}\n`);
-
 });
+
+
+function captureScreen(){
+  const displayBounds = screen.getPrimaryDisplay().bounds;
+  W = displayBounds.width;
+  H = displayBounds.height;
+  console.log("Capturing screen...")
+  const sources = desktopCapturer.getSources({ 
+    types: ['screen'],
+    thumbnailSize: {width:W, height:H,} 
+  })
+  .then((sources) => {
+    if (sources.length > 0) {
+      console.log("saving screenshot...")
+      const screenSource = sources[0];
+      new Promise((resolve, reject) => {
+        const screenshotPath = path.join('screenshot.png');
+        fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(screenshotPath);
+          }
+        })
+      })
+    }
+  })
+  .catch((error) => {
+    console.log("Error screenshot...")
+    console.error(error); // 'Operation failed!' if success is false
+  });
+};
+
+
+// async function captureScreen(){
+//   const displayBounds = screen.getPrimaryDisplay().bounds;
+//   W = displayBounds.width;
+//   H = displayBounds.height;
+//   console.log("Capturing screen...")
+//   const sources = await desktopCapturer.getSources({ 
+//     types: ['screen'],
+//     thumbnailSize: {width:W, height:H,} 
+//   });
+  
+//   if (sources.length > 0) {
+//     const screenSource = sources[0];
+    
+//     return new Promise((resolve, reject) => {
+//       const screenshotPath = path.join('screenshot.png');
+//       fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
+//         if (err) {
+//           reject(err);
+//         } else {
+//           resolve(screenshotPath);
+//         }
+//       });
+//     });
+//   }
+// };
