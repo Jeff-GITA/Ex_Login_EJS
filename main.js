@@ -71,9 +71,10 @@ function createLogin() {
     // Window properties //
     x: displayBounds.x,
     y: displayBounds.y,
-    width: displayBounds.width,
-    height: displayBounds.height,
-    // fullscreen: true,
+    // width: displayBounds.width,
+    // height: displayBounds.height,
+    fullscreen: true,
+    frame: true,
     // kiosk: true,
     // show: false,
     // resizable: false,
@@ -92,29 +93,40 @@ function createLogin() {
   });
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
-  mainWindow.maximize();
+  // mainWindow.maximize();
+  mainWindow.setFullScreen(true);
     
   
   
 
   mainWindow.on("maximize", () => {
-    console.log("\nMaximize."); 
-    console.log("Max screen Bounds:", mainWindow.getBounds());
-    const actualBounds = mainWindow.getBounds();
-    const actualPos=  mainWindow.getPosition();
-    x_b = actualBounds.x;
-    y_b = actualBounds.y;
-    w_b = actualBounds.width;
-    h_b = actualBounds.height;
-    console.log("\nObtained bounds: ", x_b, y_b, w_b, h_b);
-    console.log("isMax:", mainWindow.isMaximized(), " - FS:", mainWindow.isFullScreen());
-    console.log("Initial Bounds:", mainWindow.getBounds());
+    
+    if(!isMaxInitial){
+      isMaxInitial = true;
+      console.log("\nMaximize."); 
+      console.log("Max screen Bounds:", mainWindow.getBounds());
+      const actualBounds = mainWindow.getBounds();
+      x_b = actualBounds.x;
+      y_b = actualBounds.y;
+      // w_b = actualBounds.width;
+      w_b = displayBounds.width;
+      h_b = actualBounds.height;
+      console.log("Obtained bounds: ", x_b, y_b, w_b, h_b);
+      console.log("isMax:", mainWindow.isMaximized(), " - FS:", mainWindow.isFullScreen());
+    }
+    
   });
   
   mainWindow.on('enter-full-screen', () => {
     console.log("enter-full-screen."); 
     console.log("full screen Bounds:", mainWindow.getBounds());
   });
+
+  mainWindow.on('leave-full-screen', () => {
+    console.log("leave-full-screen."); 
+    console.log("leave-full-screen:", mainWindow.getBounds());
+  });
+
 
   mainWindow.on('enter-html-full-screen', () => {
     console.log("enter-html-full-screen."); 
@@ -126,22 +138,34 @@ function createLogin() {
   mainWindow.on('minimize', () => {
     console.log("Minimized."); 
     mainWindow.maximize();
+    mainWindow.setFullScreen(true);
   });
   mainWindow.on("move", () => {
-    console.log("\nMoved...");
-    console.log("Move Bounds:", mainWindow.getBounds());
     // if(!isMoving){
+    //   console.log("\nMoved...");
     //   isMoving = true;
-    //   console.log("\n1 Move Bounds:", mainWindow.getBounds());
+    //   console.log("1 Move Bounds:", mainWindow.getBounds());
     //   setTimeout(() => {
-    //     console.log("Moved...");
-    //     // mainWindow.setPosition(x=x_b,y=y_b);
-    //     mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+    //     mainWindow.setPosition(x=x_b,y=y_b);
+    //     // mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
     //     console.log("2 Move Bounds:", mainWindow.getBounds());
     //     isMoving = false;
     //   }, actionTimer);
+    // };   
+  });
+
+  mainWindow.on("resize", () => {
+    // if(!isResizing){
+    //   console.log("\nResized...");
+    //   isResizing = true;
+    //   console.log("1 Resize Bounds:", mainWindow.getBounds());
+    //   setTimeout(() => {
+    //     mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
+    //     // mainWindow.setSize(w_b, h_b);
+    //     console.log("2 Resize Bounds:", mainWindow.getBounds());
+    //     isResizing = false;
+    //   }, actionTimer);
     // };
-    
     
     
   });
@@ -150,23 +174,7 @@ function createLogin() {
     console.log("Hidded...");
   });
 
-  mainWindow.on("resize", () => {
-    console.log("\nResized...");
-    console.log("Resize Bounds:", mainWindow.getBounds());
-    // if(!isResizing){
-    //   isResizing = true;
-    //   console.log("\n1 Resize Bounds:", mainWindow.getBounds());
-    //   setTimeout(() => {
-    //     console.log("Resized...");
-    //     mainWindow.setBounds({ x: x_b, y: y_b, width: w_b, height: h_b });
-    //     mainWindow.setSize(w_b, h_b);
-    //     console.log("2 Resize Bounds:", mainWindow.getBounds());
-    //     isResizing = false;
-    //   }, actionTimer);
-    // };
-    
-    
-  });
+  
 
   mainWindow.on("blur", () => {
     console.log("Blur...");
