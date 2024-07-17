@@ -5,8 +5,8 @@ window.electronAPI.sendWarningInfo((event, message) => {
   
 });
 
-
 let counter = 10;
+
 const timerElement = document.getElementById('timer_message');
 
 function updateTimer() {
@@ -20,6 +20,5 @@ function updateTimer() {
   }
 };
 const timerInterval = setInterval(updateTimer, 1000); // Update every second
-
 
 

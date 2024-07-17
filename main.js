@@ -1,11 +1,13 @@
 
 // #### Import packages #### //
 const { app, BrowserWindow, ipcMain, screen, desktopCapturer, Menu } = require('electron');
+
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
 var psList = require('ps-list');
 const fs = require('fs');
+
 const { exec } = require('child_process');
 
 
@@ -63,8 +65,14 @@ function createLogin() {
   
   mainWindow = new BrowserWindow({
     // Window properties //
+
     width: displayBounds.width/2,
     height: displayBounds.height/2,
+
+    x: displayBounds.x,
+    y: displayBounds.y,
+    //fullscreen: true,
+
     // kiosk: true,
     show: false,
     // resizable: false,
@@ -80,6 +88,7 @@ function createLogin() {
 
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
+
   
   mainWindow.once('ready-to-show', () => {
     console.log("Ready to show...");
@@ -98,28 +107,60 @@ function createLogin() {
 
   mainWindow.on("focus", () => {
     console.log("Focus...");
+
+  // mainWindow.maximize();
+  //mainWindow.setFullScreen(true);
+   
+  mainWindow.on("maximize", () => {
+    
+  });
+  
+  mainWindow.on('enter-full-screen', () => {
+    console.log("enter-full-screen."); 
+    console.log("full screen Bounds:", mainWindow.getBounds());
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    console.log("leave-full-screen."); 
+    console.log("leave-full-screen:", mainWindow.getBounds());
+  });
+
+
+  mainWindow.on('enter-html-full-screen', () => {
+    console.log("enter-html-full-screen."); 
+    console.log("html full screen Bounds:", mainWindow.getBounds());
+  });
+  
+
+
+  mainWindow.on('minimize', () => {
+    console.log("Minimized."); 
+    mainWindow.setFullScreen(true);
+  });
+  mainWindow.on("move", () => {
+   
+  });
+
+  mainWindow.on("resize", () => {
+  
+
   });
 
   mainWindow.on("show", () => {
     console.log("Show...");
   });
 
+
   mainWindow.on("restore", () => {
     console.log("Show...");
   });
 
-  mainWindow.on("enter-full-screen", () => {
-    console.log("enter-full-screen...");
-    console.log("full screen Bounds:", mainWindow.getBounds());
-  });
+  
+
   
   mainWindow.on("blur", () => {
     console.log("Blur...");
-    
-    // console.log("1 - Win is focused: ", mainWindow.isFocused());
-    // mainWindow.focus();  
-    // mainWindow.moveTop();
-    // console.log("2 - Win is focused: ", mainWindow.isFocused());
+ 
   });
 
   // #### Matching credentials #### //
@@ -268,6 +309,7 @@ function createWarningWindow(message){
     },
   });
   warningWindow.loadFile('warning.html');
+
   
   warningWindow.once('ready-to-show', () => {
     warningWindow.webContents.send("send_warning", message);
@@ -284,8 +326,9 @@ function createWarningWindow(message){
     console.log("\nTimer Ends ...");
     // setWindowProperties();
   });
-
+  
 };
+
 
 async function checkWarnings(){
 
@@ -356,16 +399,18 @@ ipcMain.on('check_warnings', (event, data) => {
 
 
 function captureScreen(callback){
+
   const displayBounds = screen.getPrimaryDisplay().bounds;
   W = displayBounds.width;
   H = displayBounds.height;
   console.log("Capturing screen...")
+
   desktopCapturer.getSources({ 
     types: ['screen'],
     thumbnailSize: {width:W, height:H,} 
   })
   .then((sources) => {
-    if (sources.length > 0) {
+    if (sources.length > 0) {  
       
       const screenSource = sources[0];
 
@@ -403,6 +448,7 @@ function captureScreen(callback){
     console.error(error); // 'Operation failed!' if success is false
   });
 };
+
 
 
 async function getUser(event, a, b) {
@@ -663,3 +709,4 @@ function killingProcesses(){
 //     });
 //   }
 // }
+
