@@ -26,11 +26,13 @@ var isMoreThan2Displays;
 var isRestrictedApps;
 var warningInfo;
 var processList = [];
+var isLoging = true;
+var isDisplayChecking = false;
 
 // #### Timers #### //
 const timerDisplayCheckingMinutes = 60 * 1000;
-const timerAppsCheckingMinutes = 2 * 60 * 1000;
-const timerCaptureKill = 10 * 1000
+const timerAppsCheckingMinutes = 60 * 1000;
+const timerCaptureKill = 2 * 1000
 
 // #### Menu configuration #### //
 const menuItems = [
@@ -44,9 +46,13 @@ const menuItems = [
         label: "Exit",
         click: () => app.quit(),
       },
+      {
+        role: "close",
+      },
     ]
   },
 ];
+
 const menu = Menu.buildFromTemplate(menuItems);
 Menu.setApplicationMenu(menu);
 
@@ -56,35 +62,90 @@ function createLogin() {
   const displayBounds = screen.getPrimaryDisplay().bounds;
   console.log("Display bounds:", displayBounds);
   
-  const actionTimer = 100;
-  var isMoving = false;
-  var isResizing = false;
-  var x_b, y_b, w_b, h_b;
-  var isReadyToControl = false;
-  var isMaxInitial = false;
   
-  mainWindow = new BrowserWindow({
-    // Window properties //
+  
+  const platform = process.platform;
+  console.log(platform);
 
-    width: displayBounds.width/2,
-    height: displayBounds.height/2,
+  if(platform === "linux"){
 
-    x: displayBounds.x,
-    y: displayBounds.y,
-    //fullscreen: true,
+    console.log("\nConfiguring linux system...")
 
-    // kiosk: true,
-    show: false,
-    // resizable: false,
-    // movable: false,
-    // minimizable: false,
-    // maximizable: true,
-    // alwaysOnTop: true,
-    // fullscreen: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
-  });
+    const actionTimer = 100;
+    var isMoving = false;
+    var isResizing = false;
+    var x_b, y_b, w_b, h_b;
+    var isReadyToControl = false;
+    var isMaxInitial = false;
+    
+    mainWindow = new BrowserWindow({
+      // Window properties //
+      // width: displayBounds.width/2,
+      // height: displayBounds.height/2,
+  
+      x: displayBounds.x,
+      y: displayBounds.y,
+      // fullscreenable: true,
+      // fullscreen: true,
+      maximizable: true,
+      show: false,
+
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+      },
+    });
+
+    mainWindow.on('minimize', () => {
+      console.log("Minimized..."); 
+      mainWindow.maximize();
+      // mainWindow.setFullScreen(true);
+    });
+
+    mainWindow.on("move", () => {
+      if(!isMoving){
+        console.log("\nMoved...");
+        isMoving = true;
+        console.log("1 Move Bounds:", mainWindow.getBounds());
+        setTimeout(() => {
+          mainWindow.maximize();
+        // mainWindow.setFullScreen(true);
+          isMoving = false;
+        }, actionTimer);
+      };   
+    });
+  
+  
+    mainWindow.on("resize", () => {
+      if(!isResizing){
+        console.log("\nResized...");
+        isResizing = true;
+        console.log("1 Resize Bounds:", mainWindow.getBounds());
+        setTimeout(() => {
+          mainWindow.maximize();
+          // mainWindow.setFullScreen(true);
+          isResizing = false;
+        }, actionTimer);
+      };
+    });
+
+  } else {
+
+    mainWindow = new BrowserWindow({
+      // Window properties //
+  
+      width: displayBounds.width/2,
+      height: displayBounds.height/2,
+  
+      x: displayBounds.x,
+      y: displayBounds.y,
+      //fullscreen: true,
+      show: false,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+      },
+    });
+
+  };
 
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
@@ -95,11 +156,14 @@ function createLogin() {
     // mainWindow.setFullScreen(true);
     mainWindow.show();
     // #### Configuring warning checking #### //
-    const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
-    // #### Configuring warning checking #### //
-    // const timerIntervalApps = setInterval(checkRestrictedApps, timerAppsCheckingMinutes);
-  })
-  
+
+    setTimeout( () => {
+      isLoging = true;
+      checkDisplays();
+      const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+    }, 5000);
+
+  });
 
   mainWindow.on("hide", () => {
     console.log("Hidded...");
@@ -107,12 +171,6 @@ function createLogin() {
 
   mainWindow.on("focus", () => {
     console.log("Focus...");
-
-  // mainWindow.maximize();
-  //mainWindow.setFullScreen(true);
-   
-  mainWindow.on("maximize", () => {
-    
   });
   
   mainWindow.on('enter-full-screen', () => {
@@ -122,7 +180,7 @@ function createLogin() {
 
   mainWindow.on('leave-full-screen', () => {
     console.log("leave-full-screen."); 
-    console.log("leave-full-screen:", mainWindow.getBounds());
+    mainWindow.setFullScreen(true);
   });
 
 
@@ -131,36 +189,18 @@ function createLogin() {
     console.log("html full screen Bounds:", mainWindow.getBounds());
   });
   
-
-
-  mainWindow.on('minimize', () => {
-    console.log("Minimized."); 
-    mainWindow.setFullScreen(true);
-  });
-  mainWindow.on("move", () => {
-   
-  });
-
-  mainWindow.on("resize", () => {
-  
-
-  });
-
   mainWindow.on("show", () => {
     console.log("Show...");
   });
-
 
   mainWindow.on("restore", () => {
     console.log("Show...");
   });
 
-  
-
-  
   mainWindow.on("blur", () => {
     console.log("Blur...");
- 
+    mainWindow.setAlwaysOnTop(true);
+
   });
 
   // #### Matching credentials #### //
@@ -169,9 +209,22 @@ function createLogin() {
     console.log("Credentials:")
     console.log(username)
     console.log(password)
-    getUser(event, username, password);  
+
+    // Display info //
+    var displays = screen.getAllDisplays();
+    isMoreThan2Displays = displays.length >= 2;
+    
+    if(isMoreThan2Displays && isDisplayChecking){
+      const message = "2 displays connected, pleas use just one."
+      event.reply('login-error', message);
+    } else {
+      getUser(event, username, password);  
+    };
+
   });  
 };
+
+
 
 
 // #### Main window #### //
@@ -179,10 +232,15 @@ function showMainWindow() {
   mainWindow.loadFile('mainWindow.html');
   console.log("send credential...")
   mainWindow.webContents.send("send-token", {userToken});
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 
   // Setting timer to check apps //
   sendPCInfo();
+
+  // changing loging state //
+  isLoging = false;
+  
+  // timer to star checking restricted apps //
   setTimeout(() => {
     checkRestrictedApps();
     const timerIntervalApps = setInterval(checkRestrictedApps, timerAppsCheckingMinutes);
@@ -192,12 +250,14 @@ function showMainWindow() {
 
 
 app.whenReady().then(() => {
+  
   createLogin();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createLogin();
     }
   });
+
 });
 
 app.on('window-all-closed', () => {
@@ -285,46 +345,57 @@ ipcMain.on('detect_apps', (event, data) => {
   softwareInformation();
 });
 
-function createWarningWindow(message){
 
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+function defaultCallback() {
+  return new Promise((resolve, reject) => {
+    console.log("Default callback executed");
+    resolve("default");
+  });
+};
+
+function createWarningWindow(message, callback=defaultCallback){
+
+  const displayBounds = screen.getPrimaryDisplay().bounds;
 
   warningWindow = new BrowserWindow({
-    // Window properties //
-    // width: width,
-    // height: height,
-    show: false,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: true,
-    alwaysOnTop: true,
+    x: displayBounds.x,
+    y: displayBounds.y,
+    // resizable: false,
+    // movable: false,
+    // minimizable: false,
+    // maximizable: false,
+    // alwaysOnTop: true,
+    fullscreenable: true,
     fullscreen:true,
     
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      // contextIsolation: true,
-      // // enableRemoteModule: false,
-      // nodeIntegration: true,
     },
   });
+
   warningWindow.loadFile('warning.html');
 
   
   warningWindow.once('ready-to-show', () => {
     warningWindow.webContents.send("send_warning", message);
+    // hide mainwindow //
     mainWindow.setAlwaysOnTop(false);
+    // configure warning window properties //
     warningWindow.setFullScreen(true);
     warningWindow.setAlwaysOnTop(true);  
     warningWindow.show();
   });
+
   console.log("\nBegin warning window");
   ipcMain.on('close_warning', (event, data) => {
     // Close warning window //
     warningWindow.close();
-    captureScreen(killingProcesses);
-    console.log("\nTimer Ends ...");
-    // setWindowProperties();
+    setTimeout(()=>{
+      captureScreen(callback);
+    }, 2000);
+    
+    console.log("\nWarnig window closed ...");
+    setWindowProperties();
   });
   
 };
@@ -355,17 +426,19 @@ async function checkWarnings(){
   if(isMoreThan2Displays || isRestrictedApps){
     console.log("\nWarning!!\n");
     mainWindow.setAlwaysOnTop(false);
-    createWarningWindow();
+    // createWarningWindow();
   };
 };
 
 function setWindowProperties(){
   mainWindow.setAlwaysOnTop(true);
-  mainWindow.setFullScreen(true);
-  mainWindow.minimizable = false;
-  mainWindow.resizable = false;
-  mainWindow.movable = false;
-  mainWindow.maximizable = true;
+  mainWindow.maximize();
+  // mainWindow.setFullScreen(true);
+  // mainWindow.minimizable = false;
+  // mainWindow.resizable = false;
+  // mainWindow.movable = false;
+  // mainWindow.maximizable = false;
+  // mainWindow.fullScreenable = true;
 };
 
 function sendWarnings(sendToken){
@@ -411,6 +484,8 @@ function captureScreen(callback){
   })
   .then((sources) => {
     if (sources.length > 0) {  
+
+      console.log(`Number of screen to capture: ${sources.length}.`)
       
       const screenSource = sources[0];
 
@@ -419,7 +494,6 @@ function captureScreen(callback){
       const informationType = "screenshot_warning";
       const informationBody = {
         "screenshot": sendImage,
-        
       };
       // Sending information  //
       sendInfo(userToken, informationType, informationBody);
@@ -435,7 +509,11 @@ function captureScreen(callback){
           // resolve(screenshotPath);
           console.log("\nScreenshot saved...");
           setTimeout(() =>{
-            callback();
+            callback().then((answer) => {
+              if(answer==="apps"){
+                checkActualProcess();
+              }
+            });
           }, timerCaptureKill);
           
         }
@@ -453,6 +531,7 @@ function captureScreen(callback){
 
 async function getUser(event, a, b) {
   try {
+    
     // const response = await axios.get(`${API_URL}/users?username=jeff&password=0821`);
     const response = await axios.get(`${API_URL}/users`, {
       params: {
@@ -464,36 +543,55 @@ async function getUser(event, a, b) {
     userToken = response.data.token;
     console.log(`\nUser Token: ${userToken}\n`);
     showMainWindow();
+
   } catch (error) {
+
     if (error.response && error.response.status === 400) {
+
       console.log('Invalid credentials');
+
     } else {
+
       console.log('An error occurred during login');
+
     }
+
     console.log("Wrong Password")
     event.reply('login-error', error.response.data.message);
   }
+
 };
 
 function checkDisplays(){
+  
   // Display info //
   var displays = screen.getAllDisplays();
   isMoreThan2Displays = displays.length >= 2;
   console.log("\nChecking warnings:");
   console.log("isMoreThan2Displays:", isMoreThan2Displays);
-  if(isMoreThan2Displays){
+  
+  if(isMoreThan2Displays && isDisplayChecking){
     console.log("\nSending displays warning");
     const informationType = "displays_warning";
     const informationBody = {
       "nDisplays": displays.length,
       "displayObjects": displays,
     };
+
     // Sending information  //
+    
     sendInfo(userToken, informationType, informationBody);
+    const message = `Using ${displays.length} displays, please use just one.`
+    createWarningWindow(message);
+
   };
+  
+
 };
 
+
 async function checkRestrictedApps(){
+  
   // Restricted apps //
   // const restrictedAppsList = ["chrome", "opera", "firefox", "msedge"];
   const restrictedAppsList = ["chrome", "firefox", "msedge"];
@@ -538,39 +636,42 @@ async function checkRestrictedApps(){
     // Sending information  //
     sendInfo(userToken, informationType, informationBody);
     const message = `You are using restricted apps: ${appNamesList}.`
-    createWarningWindow(message);
+    createWarningWindow(message, killingProcesses);
   };
 };
 
 
 function sendInfo(sendToken, sendType ,sendBody){
   // sendToken = 123456789;
+  if(!isLoging){
+    
+    console.log("\nSend information to API:");
+    console.log("Token:", sendToken);
+    console.log("Type of request:", sendType);
+    console.log("Body:", sendBody);
 
-  console.log("\nSend information to API:");
-  console.log("Token:", sendToken);
-  console.log("Type of request:", sendType);
-  console.log("Body:", sendBody);
-
-  axios.post(`${INFO_URL}/information`, sendBody, {
-      headers: {
-        'Content-Type' : 'application/json',
-      },
-      params: {
-        "token": sendToken,
-        "type": sendType,
-      },
+    axios.post(`${INFO_URL}/information`, sendBody, {
+        headers: {
+          'Content-Type' : 'application/json',
+        },
+        params: {
+          "token": sendToken,
+          "type": sendType,
+        },
+      })
+    .then(function (response) {
+      console.log("\nInformation taken...");
+      console.log(response.data);
     })
-  .then(function (response) {
-    console.log("\nInformation taken...");
-    console.log(response.data);
-  })
-  .catch(function (error) {
-    console.log("\nError sending information...");
-    console.log(error);
-  });
+    .catch(function (error) {
+      console.log("\nError sending information...");
+      console.log(error);
+    });
+  };
 };
 
 function sendPCInfo(){
+  
   console.log("\nSending PC information");
   // console.log("\nCPU Info:")
   var cpuObject = os.cpus()[0]; 
@@ -635,7 +736,6 @@ function systemInformation(){
   var gbFree = (bytesFree/GB).toFixed(2);
   var usagePercentage = ((gbAvailable-gbFree)/gbAvailable*100).toFixed(2)
 
-
   var osType = os.type(); // Linux, Darwin or Window_NT
   var osPlatform = os.platform(); // 'darwin', 'freebsd', 'linux', 'sunos' or 'win32'
 
@@ -664,49 +764,65 @@ function systemInformation(){
 
 function killingProcesses(){
   console.log("\n\nKilling restricted processes...")
-  const platform = process.platform;
-
-  processList.forEach(appObj => {
-    console.log("Kill: ", appObj.name, " PID: ", appObj.pid);
-    // killP(appObj.pid);
-    if (platform === 'win32') {
-      exec(`taskkill /PID ${appObj.pid} /F`, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error killing process: ${error.message}`);
-          return;
-        }
-        console.log(`Process killed: ${stdout}`);
-      });
-    } else {
-      exec(`kill -9 ${appObj.pid}`, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error killing process: ${error.message}`);
-          return;
-        }
-        console.log(`Process killed: ${stdout}`);
-      });
-    };
+  
+  return new Promise((resolve, reject) => {
+    const platform = process.platform;
+    processList.forEach((appObj, index, array) => {
+      console.log("Kill: ", appObj.name, " PID: ", appObj.pid);
+      killP(appObj.pid, platform);
+      if (index === array.length-1) resolve("apps");
+    });
   });
+
 };
 
-// function killP(pid) {
+function killP(pid, platform) {
+  if (platform === 'win32') {
+    exec(`taskkill /PID ${pid} /F`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error killing process: ${error.message}`);
+        return;
+      }
+      console.log(`Process killed: ${stdout}`);
+    });
+  } else {
+    exec(`kill -9 ${pid}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error killing process: ${error.message}`);
+        return;
+      }
+      console.log(`Process killed: ${stdout}`);
+    });
+  };
+};
 
-//   if (platform === 'win32') {
-//     exec(`taskkill /PID ${pid} /F`, (error, stdout, stderr) => {
-//       if (error) {
-//         console.error(`Error killing process: ${error.message}`);
-//         return;
-//       }
-//       console.log(`Process killed: ${stdout}`);
-//     });
-//   } else {
-//     exec(`kill -9 ${pid}`, (error, stdout, stderr) => {
-//       if (error) {
-//         console.error(`Error killing process: ${error.message}`);
-//         return;
-//       }
-//       console.log(`Process killed: ${stdout}`);
-//     });
-//   }
-// }
+async function checkActualProcess(){
 
+  // var processes = await psList();
+  psList().then((processes) => {
+    // List to store objects with blocked names
+    var nameProcessList = [];
+    // Loop through each object in the object list
+    var processPromise = new Promise((resolve, reject) => {
+      processes.forEach((obj, index, array) => {
+        nameProcessList.push(obj.name); 
+        if (index === array.length -1) resolve();
+      });
+    });
+
+    processPromise.then(() => {
+      console.log("\n\nList of all process:")
+      console.log(nameProcessList);
+
+      // send information //
+      const informationType = "current_process_after_close_apps";
+      const informationBody = {
+        "current_process_list": nameProcessList,
+      };
+      // Sending information  //
+      sendInfo(userToken, informationType, informationBody);
+
+    });
+    
+  });  
+};
