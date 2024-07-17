@@ -2,9 +2,9 @@
 console.log('Main application window loaded');
 // This listener is waiting the credential from main window //
 window.electronAPI.sendCredentials((event, data) => {
-    const {username, password} = data;
+    
     console.log("Main window:")
-    console.log("Credentials: ",username, password);
+    console.log("Credentials: ", data);
   });
 
 

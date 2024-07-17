@@ -1,63 +1,59 @@
-const { app, BrowserWindow, ipcMain, screen, desktopCapturer } = require('electron');
+
+// #### Import packages #### //
+const { app, BrowserWindow, ipcMain, screen, desktopCapturer, Menu } = require('electron');
 const path = require('path');
 const axios = require('axios');
 const os = require("os");
 var psList = require('ps-list');
 const fs = require('fs');
-;
+const { exec } = require('child_process');
 
 
-// const API_URL = "https://jsonplaceholder.typicode.com/users"
+// #### URLs #### //
 const API_URL = "https://5b9d91df-5241-4ae0-ab7d-6256341b374e.mock.pstmn.io"
 const INFO_URL = "https://ba504831-2a9f-4e6d-90e4-42e752be7d95.mock.pstmn.io"
 
+// #### Global variables #### //
 var mainWindow;
 var warningWindow;
-// let loginWindow;
 var username, password;
-var token;
+var userToken;
 
-// Warning variables //
+// #### Global variables #### //
 var isMoreThan2Displays;
 var isRestrictedApps;
 var warningInfo;
+var processList = [];
 
-async function getUser(event, a, b) {
-  try {
-    // const response = await axios.get(`${API_URL}/users?username=jeff&password=0821`);
-    const response = await axios.get(`${API_URL}/users`, {
-      params: {
-        username: a,
-        password: b,
-      }
-    });
-    token = response.data.token;
-    console.log(`\nUser Token: ${token}\n`);
-    showMainWindow();
-    // loginWindow.close();
+// #### Timers #### //
+const timerDisplayCheckingMinutes = 60 * 1000;
+const timerAppsCheckingMinutes = 2 * 60 * 1000;
+const timerCaptureKill = 10 * 1000
 
-  } catch (error) {
-    if (error.response && error.response.status === 400) {
-      console.log('Invalid credentials');
-    } else {
-      console.log('An error occurred during login');
-    }
-    console.log("Wrong Password")
-    event.reply('login-error', error.response.data.message);
-  }
-}
+// #### Menu configuration #### //
+const menuItems = [
+  {
+    label: "File",
+    submenu: [
+      {
+        type: "separator",
+      },
+      {
+        label: "Exit",
+        click: () => app.quit(),
+      },
+    ]
+  },
+];
+const menu = Menu.buildFromTemplate(menuItems);
+Menu.setApplicationMenu(menu);
 
+// #### Login window #### //
 function createLogin() {
-  
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
   const displayBounds = screen.getPrimaryDisplay().bounds;
-  const workArea = screen.getPrimaryDisplay().workArea;
-
-  // const { width, height } = screen.getPrimaryDisplay().size;
-  console.log(`\nDisplay workAreaSize: W:${width}, H:${height}\n`);
   console.log("Display bounds:", displayBounds);
-  console.log("Display workArea:", workArea);
-
+  
   const actionTimer = 100;
   var isMoving = false;
   var isResizing = false;
@@ -67,31 +63,32 @@ function createLogin() {
   
   mainWindow = new BrowserWindow({
     // Window properties //
-    width: displayBounds.width,
-    height: displayBounds.height,
+    width: displayBounds.width/2,
+    height: displayBounds.height/2,
     // kiosk: true,
     show: false,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: true,
-    alwaysOnTop: true,
-    // fullscreenable: true,
-    
+    // resizable: false,
+    // movable: false,
+    // minimizable: false,
+    // maximizable: true,
+    // alwaysOnTop: true,
+    // fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      // contextIsolation: true,
-      // // enableRemoteModule: false,
-      // nodeIntegration: true,
     },
   });
+
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
-
+  
   mainWindow.once('ready-to-show', () => {
-    console.log("Ready to show...")
-    mainWindow.maximize();
-    mainWindow.show()
+    console.log("Ready to show...");
+    // mainWindow.setFullScreen(true);
+    mainWindow.show();
+    // #### Configuring warning checking #### //
+    const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+    // #### Configuring warning checking #### //
+    // const timerIntervalApps = setInterval(checkRestrictedApps, timerAppsCheckingMinutes);
   })
   
 
@@ -113,47 +110,51 @@ function createLogin() {
 
   mainWindow.on("enter-full-screen", () => {
     console.log("enter-full-screen...");
+    console.log("full screen Bounds:", mainWindow.getBounds());
   });
   
   mainWindow.on("blur", () => {
     console.log("Blur...");
     
-    console.log("1 - Win is focused: ", mainWindow.isFocused());
-    mainWindow.focus();  
-    mainWindow.moveTop();
-    console.log("2 - Win is focused: ", mainWindow.isFocused());
+    // console.log("1 - Win is focused: ", mainWindow.isFocused());
+    // mainWindow.focus();  
+    // mainWindow.moveTop();
+    // console.log("2 - Win is focused: ", mainWindow.isFocused());
   });
 
-};//create
+  // #### Matching credentials #### //
+  ipcMain.on('login', (event, credentials) => {
+    ({username, password} = credentials);
+    console.log("Credentials:")
+    console.log(username)
+    console.log(password)
+    getUser(event, username, password);  
+  });  
+};
 
 
+// #### Main window #### //
 function showMainWindow() {
-  // mainWindow = new BrowserWindow({
-  //   width: 800,
-  //   height: 600,
-  //   webPreferences: {
-  //     preload: path.join(__dirname, 'preload.js'),
-  //     contextIsolation: true,
-  //     enableRemoteModule: false,
-  //     nodeIntegration: false,
-  //   },
-  // });
-
   mainWindow.loadFile('mainWindow.html');
-
   console.log("send credential...")
-  mainWindow.webContents.send("send-credentials", {username, password});
+  mainWindow.webContents.send("send-token", {userToken});
   mainWindow.webContents.openDevTools();
 
+  // Setting timer to check apps //
+  sendPCInfo();
+  setTimeout(() => {
+    checkRestrictedApps();
+    const timerIntervalApps = setInterval(checkRestrictedApps, timerAppsCheckingMinutes);
+  }, 5000);
+  
 };
+
 
 app.whenReady().then(() => {
   createLogin();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createLogin();
-      
     }
   });
 });
@@ -164,19 +165,6 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
-
-ipcMain.on('login', (event, credentials) => {
-  ({username, password} = credentials);
-  console.log("Credentials:")
-  console.log(username)
-  console.log(password)
-  // console.log("Credentials: ",username, password)
-
-  getUser(event, username, password)
-  
-});
-
-
 
 function displayInformation(){
   // Retrieve information about all monitors.
@@ -200,6 +188,375 @@ ipcMain.on('detect_displays', (event, data) => {
     
 });
 
+
+ipcMain.on('detect_system', (event, data) => {
+  
+  var systemMessage = systemInformation();
+  mainWindow.webContents.send("send_system_info", systemMessage);
+    
+});
+
+function filterBlockedNames(objectList, blockedNames) {
+  // List to store objects with blocked names
+  var blockedObjects = [];
+  var nameBlockedList = [];
+  var nameObjects = [];
+  
+  // Loop through each object in the object list
+  objectList.forEach(obj => {
+    // Loop through each blocked name
+    blockedNames.forEach(blockedName => {
+      // Check if the blocked name is a substring of the object's name
+      if (obj.name.toLowerCase().includes(blockedName.toLowerCase())) {
+        // Save objects //
+        blockedObjects.push(obj);
+        
+        if (!nameBlockedList.includes(blockedName.toLowerCase())){
+          nameBlockedList.push(blockedName.toLowerCase());
+        };
+        
+      };
+    });
+  });
+  // console.log("\nObjects:");
+  // console.log(blockedObjects);
+  return blockedObjects, nameBlockedList;
+};
+
+async function softwareInformation(){
+  
+  var processes = await psList();
+  const restrictedAppsList = ['chrome', 'opera', 'firefox', 'edge'];
+  // const restrictedAppsList = ["edge"];
+  var blockedNamesObj, blockedNamesList = filterBlockedNames(processes, restrictedAppsList);
+
+  console.log("\n");
+  console.log("Browser Apps:");
+  console.log(blockedNamesList);
+  console.log("\n");
+  mainWindow.webContents.send("send_apps_info", blockedNamesList);
+
+};
+
+ipcMain.on('detect_apps', (event, data) => {
+  console.log("[Main]:")
+  console.log(data);
+  softwareInformation();
+});
+
+function createWarningWindow(message){
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
+  warningWindow = new BrowserWindow({
+    // Window properties //
+    // width: width,
+    // height: height,
+    show: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: true,
+    alwaysOnTop: true,
+    fullscreen:true,
+    
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      // contextIsolation: true,
+      // // enableRemoteModule: false,
+      // nodeIntegration: true,
+    },
+  });
+  warningWindow.loadFile('warning.html');
+  
+  warningWindow.once('ready-to-show', () => {
+    warningWindow.webContents.send("send_warning", message);
+    mainWindow.setAlwaysOnTop(false);
+    warningWindow.setFullScreen(true);
+    warningWindow.setAlwaysOnTop(true);  
+    warningWindow.show();
+  });
+  console.log("\nBegin warning window");
+  ipcMain.on('close_warning', (event, data) => {
+    // Close warning window //
+    warningWindow.close();
+    captureScreen(killingProcesses);
+    console.log("\nTimer Ends ...");
+    // setWindowProperties();
+  });
+
+};
+
+async function checkWarnings(){
+
+  // Display info //
+  var displays = screen.getAllDisplays();
+  isMoreThan2Displays = displays.length >= 2;
+
+  // Restricted apps //
+  var processes = await psList();
+  const restrictedAppsList = ['chrome', 'opera', 'firefox', 'edge'];
+  var blockedNamesObj, blockedNamesList = filterBlockedNames(processes, restrictedAppsList);
+
+  isRestrictedApps = blockedNamesList.length >= 1;
+
+  console.log("\nChecking warnings:");
+  console.log("isMoreThan2Displays:", isMoreThan2Displays);
+  console.log("isRestrictedApps:", isRestrictedApps);
+
+  warningInfo = {
+    "displays": displays.length,
+    "apps": blockedNamesList,
+  };
+
+  if(isMoreThan2Displays || isRestrictedApps){
+    console.log("\nWarning!!\n");
+    mainWindow.setAlwaysOnTop(false);
+    createWarningWindow();
+  };
+};
+
+function setWindowProperties(){
+  mainWindow.setAlwaysOnTop(true);
+  mainWindow.setFullScreen(true);
+  mainWindow.minimizable = false;
+  mainWindow.resizable = false;
+  mainWindow.movable = false;
+  mainWindow.maximizable = true;
+};
+
+function sendWarnings(sendToken){
+  console.log("\n Send warning to API:");
+  // sendToken = 123456789;
+  axios.post(`${INFO_URL}/information`, warningInfo, {
+      headers: {
+        'Content-Type' : 'application/json',
+      },
+      params: {
+        token: sendToken,
+        "type": "waring",
+      },
+    })
+  .then(function (response) {
+    console.log("\n Sending warning information using axios:");
+    console.log(response.data);
+  })
+  .catch(function (error) {
+    console.log(error);
+  });
+};
+
+ipcMain.on('check_warnings', (event, data) => {
+  console.log("[Main]:")
+  console.log(data);
+  checkWarnings();
+  sendWarnings(userToken);
+  console.log(`\n2 - User Token: ${userToken}\n`);
+});
+
+
+function captureScreen(callback){
+  const displayBounds = screen.getPrimaryDisplay().bounds;
+  W = displayBounds.width;
+  H = displayBounds.height;
+  console.log("Capturing screen...")
+  desktopCapturer.getSources({ 
+    types: ['screen'],
+    thumbnailSize: {width:W, height:H,} 
+  })
+  .then((sources) => {
+    if (sources.length > 0) {
+      
+      const screenSource = sources[0];
+
+      console.log("sending screenshot...")
+      const sendImage = screenSource.thumbnail.toDataURL();
+      const informationType = "screenshot_warning";
+      const informationBody = {
+        "screenshot": sendImage,
+        
+      };
+      // Sending information  //
+      sendInfo(userToken, informationType, informationBody);
+
+      // new Promise((resolve, reject) => {
+      console.log("saving screenshot...")
+      const screenshotPath = path.join('screenshots_folder/screenshot.png');
+      fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
+        if (err) {
+          console.log(err);
+          // reject(err);
+        } else {
+          // resolve(screenshotPath);
+          console.log("\nScreenshot saved...");
+          setTimeout(() =>{
+            callback();
+          }, timerCaptureKill);
+          
+        }
+      })
+      // });
+    };
+  })
+  .catch((error) => {
+    console.log("Error screenshot...")
+    console.error(error); // 'Operation failed!' if success is false
+  });
+};
+
+
+async function getUser(event, a, b) {
+  try {
+    // const response = await axios.get(`${API_URL}/users?username=jeff&password=0821`);
+    const response = await axios.get(`${API_URL}/users`, {
+      params: {
+        username: a,
+        password: b,
+      }
+    });
+    // Capturing token //
+    userToken = response.data.token;
+    console.log(`\nUser Token: ${userToken}\n`);
+    showMainWindow();
+  } catch (error) {
+    if (error.response && error.response.status === 400) {
+      console.log('Invalid credentials');
+    } else {
+      console.log('An error occurred during login');
+    }
+    console.log("Wrong Password")
+    event.reply('login-error', error.response.data.message);
+  }
+};
+
+function checkDisplays(){
+  // Display info //
+  var displays = screen.getAllDisplays();
+  isMoreThan2Displays = displays.length >= 2;
+  console.log("\nChecking warnings:");
+  console.log("isMoreThan2Displays:", isMoreThan2Displays);
+  if(isMoreThan2Displays){
+    console.log("\nSending displays warning");
+    const informationType = "displays_warning";
+    const informationBody = {
+      "nDisplays": displays.length,
+      "displayObjects": displays,
+    };
+    // Sending information  //
+    sendInfo(userToken, informationType, informationBody);
+  };
+};
+
+async function checkRestrictedApps(){
+  // Restricted apps //
+  // const restrictedAppsList = ["chrome", "opera", "firefox", "msedge"];
+  const restrictedAppsList = ["chrome", "firefox", "msedge"];
+  // Reading runing processes //
+  var processes = await psList();
+
+  // List to store objects with blocked names
+  processList = [];
+  var appNamesList = [];
+  
+  // Loop through each object in the object list
+  processes.forEach(obj => {
+    // Loop through each blocked name
+    restrictedAppsList.forEach(appName => {
+      // Check if the blocked name is a substring of the object's name
+      if (obj.name.toLowerCase().includes(appName.toLowerCase())) {
+        // Save objects //
+        processList.push(obj);
+        
+        if (!appNamesList.includes(appName.toLowerCase())){
+          appNamesList.push(appName.toLowerCase());
+        };
+        
+      };
+    });
+  });
+
+  isRestrictedApps = appNamesList.length >= 1;
+  console.log("\nChecking warnings:");
+  console.log("isRestrictedApps:", isRestrictedApps);
+  console.log(appNamesList);
+  console.log(processList);
+
+  if(isRestrictedApps){
+    console.log("\nSending apps warning");
+    const informationType = "apps_warning";
+    const informationBody = {
+      "nApps": appNamesList.length,
+      "restrictedApps": appNamesList,
+      // "appObjects": processList,
+    };
+    // Sending information  //
+    sendInfo(userToken, informationType, informationBody);
+    const message = `You are using restricted apps: ${appNamesList}.`
+    createWarningWindow(message);
+  };
+};
+
+
+function sendInfo(sendToken, sendType ,sendBody){
+  // sendToken = 123456789;
+
+  console.log("\nSend information to API:");
+  console.log("Token:", sendToken);
+  console.log("Type of request:", sendType);
+  console.log("Body:", sendBody);
+
+  axios.post(`${INFO_URL}/information`, sendBody, {
+      headers: {
+        'Content-Type' : 'application/json',
+      },
+      params: {
+        "token": sendToken,
+        "type": sendType,
+      },
+    })
+  .then(function (response) {
+    console.log("\nInformation taken...");
+    console.log(response.data);
+  })
+  .catch(function (error) {
+    console.log("\nError sending information...");
+    console.log(error);
+  });
+};
+
+function sendPCInfo(){
+  console.log("\nSending PC information");
+  // console.log("\nCPU Info:")
+  var cpuObject = os.cpus()[0]; 
+  var cpuModel = cpuObject.model;
+  var osArch = os.arch();
+  var osType = os.type(); // Linux, Darwin or Window_NT
+  var osPlatform = os.platform(); // 'darwin', 'freebsd', 'linux', 'sunos' or 'win32'
+  var bytesAvailable = os.totalmem(); // returns number in bytes
+  var bytesFree = os.freemem();
+  // 1 mb = 1048576 bytes
+  MB = 1048576;
+  GB = 1073741824;
+  var gbAvailable = (bytesAvailable/GB).toFixed(2);
+  var gbFree = (bytesFree/GB).toFixed(2);
+  var usagePercentage = ((gbAvailable-gbFree)/gbAvailable*100).toFixed(2);
+  var networkInterfaces = Object.keys(os.networkInterfaces());
+
+  // Preparing infor to send //
+  const informationType = "pc_information";
+  const informationBody = {
+    "cpu_model": cpuModel,
+    "os_architecture": osArch,
+    "os_type": osType,
+    "os_platform": osPlatform,
+    "available_memory_gb": `${gbAvailable} GB`,
+    "memory_usage": `${usagePercentage} %`,
+    "network_interfaces": networkInterfaces,    
+  };
+  // Sending info //
+  sendInfo(userToken, informationType, informationBody);
+
+};
 
 function systemInformation(){
   // Retrieve information about system.
@@ -258,224 +615,51 @@ function systemInformation(){
 
 };
 
-ipcMain.on('detect_system', (event, data) => {
-  
-  var systemMessage = systemInformation();
-  mainWindow.webContents.send("send_system_info", systemMessage);
-    
-});
 
-function filterBlockedNames(objectList, blockedNames) {
-  // List to store objects with blocked names
-  var blockedObjects = [];
-  var nameBlockedList = [];
-  
-  // Loop through each object in the object list
-  objectList.forEach(obj => {
-    // Loop through each blocked name
-    blockedNames.forEach(blockedName => {
-      // Check if the blocked name is a substring of the object's name
-      if (obj.name.toLowerCase().includes(blockedName.toLowerCase())) {
-        // Save objects //
-        blockedObjects.push(obj);
-        
-        if (!nameBlockedList.includes(blockedName.toLowerCase())){
-          nameBlockedList.push(blockedName.toLowerCase());
-        };
-        
-      };
-    });
-  });
+function killingProcesses(){
+  console.log("\n\nKilling restricted processes...")
+  const platform = process.platform;
 
-
-  return blockedObjects, nameBlockedList;
-};
-
-async function softwareInformation(){
-  
-
-  var processes = await psList();
-  const browserNames = ['chrome', 'opera', 'firefox', 'edge'];
-  var blockedNamesObj, blockedNamesList = filterBlockedNames(processes, browserNames);
-
-  console.log("\n");
-  console.log("Browser Apps:");
-  console.log(blockedNamesList);
-  console.log("\n");
-  mainWindow.webContents.send("send_apps_info", blockedNamesList);
-
-};
-
-ipcMain.on('detect_apps', (event, data) => {
-  console.log("[Main]:")
-  console.log(data);
-  softwareInformation();
-});
-
-function createWarningWindow(){
-
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-
-  warningWindow = new BrowserWindow({
-    // Window properties //
-    width: width,
-    height: height,
-    show: false,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: true,
-    alwaysOnTop: true,
-    
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      // contextIsolation: true,
-      // // enableRemoteModule: false,
-      // nodeIntegration: true,
-    },
-  });
-  warningWindow.loadFile('warning.html');
-  warningWindow.webContents.send("send_warning", warningInfo);
-
-  warningWindow.once('ready-to-show', () => {
-    warningWindow.maximize();
-    warningWindow.show();
-  })
-  
-  // configure time out //
-  console.log("\nTimer begin ...");
-
-  ipcMain.on('close_warning', (event, data) => {
-    // Close warning window //
-    warningWindow.close();
-    captureScreen()//.then().catch();
-    console.log("\nTimer Ends ...");
-    setWindowProperties();
-  });
-
-};
-
-async function checkWarnings(){
-
-  // Display info //
-  var displays = screen.getAllDisplays();
-  isMoreThan2Displays = displays.length >= 2;
-
-  // Restricted apps //
-  var processes = await psList();
-  const browserNames = ['chrome', 'opera', 'firefox', 'edge'];
-  var blockedNamesObj, blockedNamesList = filterBlockedNames(processes, browserNames);
-
-  isRestrictedApps = blockedNamesList.length >= 1;
-
-  console.log("\nChecking warnings:");
-  console.log("isMoreThan2Displays:", isMoreThan2Displays);
-  console.log("isRestrictedApps:", isRestrictedApps);
-
-  warningInfo = {
-    "displays": displays.length,
-    "apps": blockedNamesList,
-  };
-
-  if(isMoreThan2Displays || isRestrictedApps){
-    console.log("\nWarning!!\n");
-    mainWindow.setAlwaysOnTop(false)
-    createWarningWindow();
-  };
-};
-
-function setWindowProperties(){
-  mainWindow.setAlwaysOnTop(true);
-  mainWindow.minimizable = false;
-  mainWindow.resizable = false;
-  mainWindow.movable = false;
-  mainWindow.maximizable = true;
-};
-
-function sendWarnings(sendToken){
-  console.log("\n Send warning to API:");
-  // sendToken = 123456789;
-  axios.post(`${INFO_URL}/information`, warningInfo, {
-      headers: {
-        'Content-Type' : 'application/json',
-      },
-      params: {
-        token: sendToken,
-        "type": "waring",
-      },
-    })
-  .then(function (response) {
-    console.log("\n Sending warning information using axios:");
-    console.log(response.data);
-  })
-  .catch(function (error) {
-    console.log(error);
+  processList.forEach(appObj => {
+    console.log("Kill: ", appObj.name, " PID: ", appObj.pid);
+    // killP(appObj.pid);
+    if (platform === 'win32') {
+      exec(`taskkill /PID ${appObj.pid} /F`, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error killing process: ${error.message}`);
+          return;
+        }
+        console.log(`Process killed: ${stdout}`);
+      });
+    } else {
+      exec(`kill -9 ${appObj.pid}`, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error killing process: ${error.message}`);
+          return;
+        }
+        console.log(`Process killed: ${stdout}`);
+      });
+    };
   });
 };
 
-ipcMain.on('check_warnings', (event, data) => {
-  console.log("[Main]:")
-  console.log(data);
-  checkWarnings();
-  sendWarnings(token);
-  console.log(`\n2 - User Token: ${token}\n`);
-});
+// function killP(pid) {
 
-
-function captureScreen(){
-  const displayBounds = screen.getPrimaryDisplay().bounds;
-  W = displayBounds.width;
-  H = displayBounds.height;
-  console.log("Capturing screen...")
-  const sources = desktopCapturer.getSources({ 
-    types: ['screen'],
-    thumbnailSize: {width:W, height:H,} 
-  })
-  .then((sources) => {
-    if (sources.length > 0) {
-      console.log("saving screenshot...")
-      const screenSource = sources[0];
-      new Promise((resolve, reject) => {
-        const screenshotPath = path.join('screenshot.png');
-        fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(screenshotPath);
-          }
-        })
-      })
-    }
-  })
-  .catch((error) => {
-    console.log("Error screenshot...")
-    console.error(error); // 'Operation failed!' if success is false
-  });
-};
-
-
-// async function captureScreen(){
-//   const displayBounds = screen.getPrimaryDisplay().bounds;
-//   W = displayBounds.width;
-//   H = displayBounds.height;
-//   console.log("Capturing screen...")
-//   const sources = await desktopCapturer.getSources({ 
-//     types: ['screen'],
-//     thumbnailSize: {width:W, height:H,} 
-//   });
-  
-//   if (sources.length > 0) {
-//     const screenSource = sources[0];
-    
-//     return new Promise((resolve, reject) => {
-//       const screenshotPath = path.join('screenshot.png');
-//       fs.writeFile(screenshotPath, screenSource.thumbnail.toPNG(), (err) => {
-//         if (err) {
-//           reject(err);
-//         } else {
-//           resolve(screenshotPath);
-//         }
-//       });
+//   if (platform === 'win32') {
+//     exec(`taskkill /PID ${pid} /F`, (error, stdout, stderr) => {
+//       if (error) {
+//         console.error(`Error killing process: ${error.message}`);
+//         return;
+//       }
+//       console.log(`Process killed: ${stdout}`);
+//     });
+//   } else {
+//     exec(`kill -9 ${pid}`, (error, stdout, stderr) => {
+//       if (error) {
+//         console.error(`Error killing process: ${error.message}`);
+//         return;
+//       }
+//       console.log(`Process killed: ${stdout}`);
 //     });
 //   }
-// };
+// }

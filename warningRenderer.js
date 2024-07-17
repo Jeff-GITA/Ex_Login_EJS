@@ -1,24 +1,12 @@
 
-window.electronAPI.sendWarningInfo((event, data) => {
+window.electronAPI.sendWarningInfo((event, message) => {
 
-
-    if(data.displays >= 2){
-        
-        displayMessage = `Number displays used: ${data.displays}. Please use just ONE. `;
-        document.getElementById('warning_display_message').textContent = displayMessage;
-    }
-
-    if(data.apps.length >= 1){
-        
-        appMessage = `Restricted apps used: ${data.apps}. Please close them.`;
-        document.getElementById('warning_app_message').textContent = appMessage;
-    };
-
+    document.getElementById('warning_message').textContent = message;
   
 });
 
 
-let counter = 6;
+let counter = 10;
 const timerElement = document.getElementById('timer_message');
 
 function updateTimer() {
