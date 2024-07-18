@@ -27,6 +27,7 @@ var isRestrictedApps;
 var warningInfo;
 var processList = [];
 var isLoging = true;
+var isWarningWindow = false;
 var isDisplayChecking = true;
 
 // #### Timers #### //
@@ -95,6 +96,21 @@ function createLogin() {
       },
     });
 
+    mainWindow.once('ready-to-show', () => {
+      console.log("Ready to show...");
+      
+      mainWindow.maximize();
+      mainWindow.show();
+
+      // #### Configuring warning checking #### //
+      setTimeout( () => {
+        isLoging = true;
+        checkDisplays();
+        const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+      }, 5000);
+  
+    });
+
     mainWindow.on('minimize', () => {
       console.log("Minimized..."); 
       mainWindow.maximize();
@@ -133,16 +149,36 @@ function createLogin() {
     mainWindow = new BrowserWindow({
       // Window properties //
   
-      width: displayBounds.width/2,
-      height: displayBounds.height/2,
-  
+      width: displayBounds.width,
+      height: displayBounds.height,
       x: displayBounds.x,
       y: displayBounds.y,
-      //fullscreen: true,
+      fullscreen: true,
+      fullScreenable: true,
+      minimizable: false,
+      movable: false,
+      resizable: false,
+      maximizable: false,
+      alwaysOnTop: true,
       show: false,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
       },
+    });
+
+    mainWindow.once('ready-to-show', () => {
+      console.log("Ready to show...");
+      mainWindow.setFullScreen(true);
+      mainWindow.setAlwaysOnTop(true);
+      mainWindow.show();
+
+      // #### Configuring warning checking #### //
+      setTimeout( () => {
+        isLoging = true;
+        checkDisplays();
+        const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+      }, 5000);
+  
     });
 
   };
@@ -150,20 +186,6 @@ function createLogin() {
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
 
-  
-  mainWindow.once('ready-to-show', () => {
-    console.log("Ready to show...");
-    // mainWindow.setFullScreen(true);
-    mainWindow.show();
-    // #### Configuring warning checking #### //
-
-    setTimeout( () => {
-      isLoging = true;
-      checkDisplays();
-      const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
-    }, 5000);
-
-  });
 
   mainWindow.on("hide", () => {
     console.log("Hidded...");
@@ -180,27 +202,28 @@ function createLogin() {
 
   mainWindow.on('leave-full-screen', () => {
     console.log("leave-full-screen."); 
-    mainWindow.setFullScreen(true);
+    if(!isWarningWindow){
+      mainWindow.setFullScreen(true);
+    };
+    
   });
-
-
-  mainWindow.on('enter-html-full-screen', () => {
-    console.log("enter-html-full-screen."); 
-    console.log("html full screen Bounds:", mainWindow.getBounds());
-  });
-  
+ 
   mainWindow.on("show", () => {
     console.log("Show...");
   });
 
   mainWindow.on("restore", () => {
-    console.log("Show...");
+    console.log("Restore...");
   });
 
   mainWindow.on("blur", () => {
     console.log("Blur...");
-    mainWindow.setAlwaysOnTop(true);
-
+    if(!isWarningWindow){
+      mainWindow.setAlwaysOnTop(true);
+      mainWindow.setFullScreen(true);
+      mainWindow.show();
+    };
+   
   });
 
   // #### Matching credentials #### //
@@ -224,9 +247,6 @@ function createLogin() {
   });  
 };
 
-
-
-
 // #### Main window #### //
 function showMainWindow() {
   mainWindow.loadFile('mainWindow.html');
@@ -234,12 +254,12 @@ function showMainWindow() {
   mainWindow.webContents.send("send-token", {userToken});
   // mainWindow.webContents.openDevTools();
 
-  // Setting timer to check apps //
-  sendPCInfo();
-
   // changing loging state //
   isLoging = false;
   
+  // Send PC Information //
+  sendPCInfo();
+
   // timer to star checking restricted apps //
   setTimeout(() => {
     checkRestrictedApps();
@@ -355,16 +375,20 @@ function defaultCallback() {
 
 function createWarningWindow(message, callback=defaultCallback){
 
+  isWarningWindow = true;
+
   const displayBounds = screen.getPrimaryDisplay().bounds;
 
   warningWindow = new BrowserWindow({
     x: displayBounds.x,
     y: displayBounds.y,
-    // resizable: false,
-    // movable: false,
-    // minimizable: false,
-    // maximizable: false,
-    // alwaysOnTop: true,
+    width: displayBounds.width,
+    height: displayBounds.height,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    alwaysOnTop: true,
     fullscreenable: true,
     fullscreen:true,
     
@@ -372,6 +396,7 @@ function createWarningWindow(message, callback=defaultCallback){
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+
 
   warningWindow.loadFile('warning.html');
 
@@ -390,32 +415,40 @@ function createWarningWindow(message, callback=defaultCallback){
   ipcMain.on('close_warning', (event, data) => {
     // Close warning window //
     warningWindow.close();
+    isWarningWindow = false;
     setTimeout(()=>{
       captureScreen(callback);
     }, 2000);
     
     console.log("\nWarnig window closed ...");
-    const platform = process.platform;
-    if(platform === "linux"){
-      setWindowPropertiesLinux();
-    } else {
-
-    };
+    
+    setWindowProperties();
 
   });
   
 };
 
-function setWindowPropertiesLinux(){
-  console.log("\nSetting windows properties Linux...")
-  mainWindow.setAlwaysOnTop(true);
-  mainWindow.maximize();
-  // mainWindow.setFullScreen(true);
-  // mainWindow.minimizable = false;
-  // mainWindow.resizable = false;
-  // mainWindow.movable = false;
-  // mainWindow.maximizable = false;
-  // mainWindow.fullScreenable = true;
+function setWindowProperties(){
+  
+  if(process.platform === "linux"){
+    
+    console.log("\nSetting windows properties Linux...")
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.maximize();
+
+  } else {
+    
+    mainWindow.fullScreenable = true;
+    mainWindow.setFullScreen(true);
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.minimizable = false;
+    mainWindow.resizable = false;
+    mainWindow.movable = false;
+    mainWindow.maximizable = false;
+
+  };
+  
+  
 };
 
 async function checkWarnings(){
