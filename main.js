@@ -27,7 +27,7 @@ var isRestrictedApps;
 var warningInfo;
 var processList = [];
 var isLoging = true;
-var isDisplayChecking = false;
+var isDisplayChecking = true;
 
 // #### Timers #### //
 const timerDisplayCheckingMinutes = 60 * 1000;
@@ -395,11 +395,28 @@ function createWarningWindow(message, callback=defaultCallback){
     }, 2000);
     
     console.log("\nWarnig window closed ...");
-    setWindowProperties();
+    const platform = process.platform;
+    if(platform === "linux"){
+      setWindowPropertiesLinux();
+    } else {
+
+    };
+
   });
   
 };
 
+function setWindowPropertiesLinux(){
+  console.log("\nSetting windows properties Linux...")
+  mainWindow.setAlwaysOnTop(true);
+  mainWindow.maximize();
+  // mainWindow.setFullScreen(true);
+  // mainWindow.minimizable = false;
+  // mainWindow.resizable = false;
+  // mainWindow.movable = false;
+  // mainWindow.maximizable = false;
+  // mainWindow.fullScreenable = true;
+};
 
 async function checkWarnings(){
 
@@ -430,16 +447,6 @@ async function checkWarnings(){
   };
 };
 
-function setWindowProperties(){
-  mainWindow.setAlwaysOnTop(true);
-  mainWindow.maximize();
-  // mainWindow.setFullScreen(true);
-  // mainWindow.minimizable = false;
-  // mainWindow.resizable = false;
-  // mainWindow.movable = false;
-  // mainWindow.maximizable = false;
-  // mainWindow.fullScreenable = true;
-};
 
 function sendWarnings(sendToken){
   console.log("\n Send warning to API:");
