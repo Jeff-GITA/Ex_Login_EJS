@@ -5,7 +5,7 @@ window.electronAPI.sendWarningInfo((event, message) => {
   
 });
 
-let counter = 10;
+let counter = 20;
 
 const timerElement = document.getElementById('timer_message');
 

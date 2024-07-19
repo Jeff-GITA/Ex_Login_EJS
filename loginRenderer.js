@@ -14,5 +14,6 @@ document.getElementById('loginForm').addEventListener('submit', (event) => {
 
 window.electronAPI.onLoginError((event, message) => {
   document.getElementById('error').textContent = message;
+  
 });
   

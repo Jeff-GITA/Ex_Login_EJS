@@ -27,6 +27,7 @@ var isRestrictedApps;
 var warningInfo;
 var processList = [];
 var isLoging = true;
+var isWarningWindow = false;
 var isDisplayChecking = true;
 
 // #### Timers #### //
@@ -62,7 +63,12 @@ function createLogin() {
   const displayBounds = screen.getPrimaryDisplay().bounds;
   console.log("Display bounds:", displayBounds);
   
-  
+  const actionTimer = 100;
+  var isMoving = false;
+  var isResizing = false;
+  var x_b, y_b, w_b, h_b;
+  var isReadyToControl = false;
+  var isMaxInitial = false;
   
   const platform = process.platform;
   console.log(platform);
@@ -71,13 +77,6 @@ function createLogin() {
 
     console.log("\nConfiguring linux system...")
 
-    const actionTimer = 100;
-    var isMoving = false;
-    var isResizing = false;
-    var x_b, y_b, w_b, h_b;
-    var isReadyToControl = false;
-    var isMaxInitial = false;
-    
     mainWindow = new BrowserWindow({
       // Window properties //
       // width: displayBounds.width/2,
@@ -95,14 +94,33 @@ function createLogin() {
       },
     });
 
-    mainWindow.on('minimize', () => {
-      console.log("Minimized..."); 
+    mainWindow.once('ready-to-show', () => {
+      console.log("Ready to show...");
+      
       mainWindow.maximize();
-      // mainWindow.setFullScreen(true);
+      mainWindow.show();
+
+      // #### Configuring warning checking #### //
+      setTimeout( () => {
+        isLoging = true;
+        checkDisplays();
+        const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+      }, 5000);
+  
     });
 
+
+    mainWindow.on('minimize', () => {
+      if(!isWarningWindow){
+        console.log("Minimized..."); 
+        mainWindow.maximize();
+        // mainWindow.setFullScreen(true);
+      }
+      
+    });
+  
     mainWindow.on("move", () => {
-      if(!isMoving){
+      if(!isMoving && !isWarningWindow){
         console.log("\nMoved...");
         isMoving = true;
         console.log("1 Move Bounds:", mainWindow.getBounds());
@@ -116,7 +134,7 @@ function createLogin() {
   
   
     mainWindow.on("resize", () => {
-      if(!isResizing){
+      if(!isResizing && !isWarningWindow){
         console.log("\nResized...");
         isResizing = true;
         console.log("1 Resize Bounds:", mainWindow.getBounds());
@@ -133,16 +151,55 @@ function createLogin() {
     mainWindow = new BrowserWindow({
       // Window properties //
   
-      width: displayBounds.width/2,
-      height: displayBounds.height/2,
-  
+      width: displayBounds.width,
+      height: displayBounds.height,
       x: displayBounds.x,
       y: displayBounds.y,
-      //fullscreen: true,
+      fullscreen: true,
+      fullScreenable: true,
+      minimizable: false,
+      movable: false,
+      resizable: false,
+      maximizable: false,
+      alwaysOnTop: true,
       show: false,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
       },
+    });
+
+
+    mainWindow.on('leave-full-screen', () => {
+      console.log("leave-full-screen."); 
+      if(!isWarningWindow){
+        mainWindow.setFullScreen(true);
+      };
+      
+    });
+
+    mainWindow.on("blur", () => {
+      console.log("Blur...");
+      if(!isWarningWindow){
+        mainWindow.setAlwaysOnTop(true);
+        mainWindow.setFullScreen(true);
+        mainWindow.show();
+      };
+     
+    });
+
+    mainWindow.once('ready-to-show', () => {
+      console.log("Ready to show...");
+      mainWindow.setFullScreen(true);
+      mainWindow.setAlwaysOnTop(true);
+      mainWindow.show();
+
+      // #### Configuring warning checking #### //
+      setTimeout( () => {
+        isLoging = true;
+        checkDisplays();
+        const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+      }, 5000);
+  
     });
 
   };
@@ -150,20 +207,6 @@ function createLogin() {
   // mainWindow.webContents.openDevTools();
   mainWindow.loadFile('login.html');
 
-  
-  mainWindow.once('ready-to-show', () => {
-    console.log("Ready to show...");
-    // mainWindow.setFullScreen(true);
-    mainWindow.show();
-    // #### Configuring warning checking #### //
-
-    setTimeout( () => {
-      isLoging = true;
-      checkDisplays();
-      const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
-    }, 5000);
-
-  });
 
   mainWindow.on("hide", () => {
     console.log("Hidded...");
@@ -178,30 +221,14 @@ function createLogin() {
     console.log("full screen Bounds:", mainWindow.getBounds());
   });
 
-  mainWindow.on('leave-full-screen', () => {
-    console.log("leave-full-screen."); 
-    mainWindow.setFullScreen(true);
-  });
-
-
-  mainWindow.on('enter-html-full-screen', () => {
-    console.log("enter-html-full-screen."); 
-    console.log("html full screen Bounds:", mainWindow.getBounds());
-  });
-  
   mainWindow.on("show", () => {
     console.log("Show...");
   });
 
   mainWindow.on("restore", () => {
-    console.log("Show...");
+    console.log("Restore...");
   });
 
-  mainWindow.on("blur", () => {
-    console.log("Blur...");
-    mainWindow.setAlwaysOnTop(true);
-
-  });
 
   // #### Matching credentials #### //
   ipcMain.on('login', (event, credentials) => {
@@ -224,6 +251,16 @@ function createLogin() {
   });  
 };
 
+function blockWindow(bWindow){
+  const actionTimer = 100;
+  var isMoving = false;
+  var isResizing = false;
+  var x_b, y_b, w_b, h_b;
+  var isReadyToControl = false;
+  var isMaxInitial = false;
+
+  
+};
 
 
 
@@ -234,12 +271,12 @@ function showMainWindow() {
   mainWindow.webContents.send("send-token", {userToken});
   // mainWindow.webContents.openDevTools();
 
-  // Setting timer to check apps //
-  sendPCInfo();
-
   // changing loging state //
   isLoging = false;
   
+  // Send PC Information //
+  sendPCInfo();
+
   // timer to star checking restricted apps //
   setTimeout(() => {
     checkRestrictedApps();
@@ -355,67 +392,177 @@ function defaultCallback() {
 
 function createWarningWindow(message, callback=defaultCallback){
 
+  isWarningWindow = true;
+
   const displayBounds = screen.getPrimaryDisplay().bounds;
 
-  warningWindow = new BrowserWindow({
-    x: displayBounds.x,
-    y: displayBounds.y,
-    // resizable: false,
-    // movable: false,
-    // minimizable: false,
-    // maximizable: false,
-    // alwaysOnTop: true,
-    fullscreenable: true,
-    fullscreen:true,
+  const actionTimer = 100;
+  var isMoving = false;
+  var isResizing = false;
+  var x_b, y_b, w_b, h_b;
+  var isReadyToControl = false;
+  var isMaxInitial = false;
+
+  const platform = process.platform;
+  console.log(platform);
+
+  if(platform === "linux"){
+
+    console.log("\nConfiguring linux system...")
+
+    warningWindow = new BrowserWindow({
+      // Window properties //
+      // width: displayBounds.width/2,
+      // height: displayBounds.height/2,
+  
+      x: displayBounds.x,
+      y: displayBounds.y,
+      // fullscreenable: true,
+      // fullscreen: true,
+      maximizable: true,
+      show: false,
+
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+      },
+    });
+
+    warningWindow.once('ready-to-show', () => {
+      warningWindow.webContents.send("send_warning", message);
+      // hide mainwindow //
+      warningWindow.maximize();
+      warningWindow.show();
+
+    });
+
+    warningWindow.on('minimize', () => {
+      console.log("Minimized..."); 
+      warningWindow.maximize();
+      // warningWindow.setFullScreen(true);
+    });
+  
+    warningWindow.on("move", () => {
+      if(!isMoving){
+        console.log("\nMoved...");
+        isMoving = true;
+        console.log("1 Move Bounds:", warningWindow.getBounds());
+        setTimeout(() => {
+          warningWindow.maximize();
+        // warningWindow.setFullScreen(true);
+          isMoving = false;
+        }, actionTimer);
+      };   
+    });
+  
+  
+    warningWindow.on("resize", () => {
+      if(!isResizing){
+        console.log("\nResized...");
+        isResizing = true;
+        console.log("1 Resize Bounds:", warningWindow.getBounds());
+        setTimeout(() => {
+          warningWindow.maximize();
+          // warningWindow.setFullScreen(true);
+          isResizing = false;
+        }, actionTimer);
+      };
+    });
+
+  } else {
+
+    warningWindow = new BrowserWindow({
+      // Window properties //
+  
+      width: displayBounds.width,
+      height: displayBounds.height,
+      x: displayBounds.x,
+      y: displayBounds.y,
+      fullscreen: true,
+      fullScreenable: true,
+      minimizable: false,
+      movable: false,
+      resizable: false,
+      maximizable: false,
+      alwaysOnTop: true,
+      show: false,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+      },
+    });
+
+
+    warningWindow.on('leave-full-screen', () => {
+      console.log("leave-full-screen."); 
+      warningWindow.setFullScreen(true);
     
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
-  });
+    });
+
+    warningWindow.on("blur", () => {
+      console.log("Blur...");
+      warningWindow.setAlwaysOnTop(true);
+      warningWindow.setFullScreen(true);
+      warningWindow.show();
+     
+    });
+
+    warningWindow.once('ready-to-show', () => {
+      warningWindow.webContents.send("send_warning", message);
+      // hide mainwindow //
+      mainWindow.setAlwaysOnTop(false);
+      // configure warning window properties //
+      warningWindow.setFullScreen(true);
+      warningWindow.setAlwaysOnTop(true);  
+      warningWindow.show();
+    });
+
+  };
+
 
   warningWindow.loadFile('warning.html');
 
   
   warningWindow.once('ready-to-show', () => {
-    warningWindow.webContents.send("send_warning", message);
-    // hide mainwindow //
-    mainWindow.setAlwaysOnTop(false);
-    // configure warning window properties //
-    warningWindow.setFullScreen(true);
-    warningWindow.setAlwaysOnTop(true);  
-    warningWindow.show();
+    
   });
 
   console.log("\nBegin warning window");
   ipcMain.on('close_warning', (event, data) => {
     // Close warning window //
     warningWindow.close();
+    isWarningWindow = false;
     setTimeout(()=>{
       captureScreen(callback);
     }, 2000);
     
     console.log("\nWarnig window closed ...");
-    const platform = process.platform;
-    if(platform === "linux"){
-      setWindowPropertiesLinux();
-    } else {
-
-    };
+    
+    setWindowProperties();
 
   });
   
 };
 
-function setWindowPropertiesLinux(){
-  console.log("\nSetting windows properties Linux...")
-  mainWindow.setAlwaysOnTop(true);
-  mainWindow.maximize();
-  // mainWindow.setFullScreen(true);
-  // mainWindow.minimizable = false;
-  // mainWindow.resizable = false;
-  // mainWindow.movable = false;
-  // mainWindow.maximizable = false;
-  // mainWindow.fullScreenable = true;
+function setWindowProperties(){
+  
+  if(process.platform === "linux"){
+    
+    console.log("\nSetting windows properties Linux...")
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.maximize();
+
+  } else {
+    
+    mainWindow.fullScreenable = true;
+    mainWindow.setFullScreen(true);
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.minimizable = false;
+    mainWindow.resizable = false;
+    mainWindow.movable = false;
+    mainWindow.maximizable = false;
+
+  };
+  
+  
 };
 
 async function checkWarnings(){
