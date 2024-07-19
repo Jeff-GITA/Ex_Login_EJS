@@ -28,7 +28,6 @@ var warningInfo;
 var processList = [];
 var isLoging = true;
 var isWarningWindow = false;
-var isWarningWindow = false;
 var isDisplayChecking = true;
 
 // #### Timers #### //
@@ -154,17 +153,8 @@ function createLogin() {
   
       width: displayBounds.width,
       height: displayBounds.height,
-      width: displayBounds.width,
-      height: displayBounds.height,
       x: displayBounds.x,
       y: displayBounds.y,
-      fullscreen: true,
-      fullScreenable: true,
-      minimizable: false,
-      movable: false,
-      resizable: false,
-      maximizable: false,
-      alwaysOnTop: true,
       fullscreen: true,
       fullScreenable: true,
       minimizable: false,
@@ -177,12 +167,6 @@ function createLogin() {
         preload: path.join(__dirname, 'preload.js'),
       },
     });
-
-    mainWindow.once('ready-to-show', () => {
-      console.log("Ready to show...");
-      mainWindow.setFullScreen(true);
-      mainWindow.setAlwaysOnTop(true);
-      mainWindow.show();
 
 
     mainWindow.on('leave-full-screen', () => {
@@ -210,20 +194,13 @@ function createLogin() {
       mainWindow.show();
 
       // #### Configuring warning checking #### //
-        // #### Configuring warning checking #### //
       setTimeout( () => {
-          isLoging = true;
-          checkDisplays();
-          const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
-        }, 5000);
-    
-      });
-
-  };
-
-  // mainWindow.webContents.openDevTools();
-  mainWindow.loadFile('login.html');
-
+        isLoging = true;
+        checkDisplays();
+        const timerIntervalDisplay = setInterval(checkDisplays, timerDisplayCheckingMinutes);
+      }, 5000);
+  
+    });
 
   };
 
@@ -244,33 +221,14 @@ function createLogin() {
     console.log("full screen Bounds:", mainWindow.getBounds());
   });
 
-  mainWindow.on('leave-full-screen', () => {
-    console.log("leave-full-screen."); 
-    if(!isWarningWindow){
-      mainWindow.setFullScreen(true);
-    };
-    
-  });
- 
-
   mainWindow.on("show", () => {
     console.log("Show...");
   });
 
   mainWindow.on("restore", () => {
     console.log("Restore...");
-    console.log("Restore...");
   });
 
-  mainWindow.on("blur", () => {
-    console.log("Blur...");
-    if(!isWarningWindow){
-      mainWindow.setAlwaysOnTop(true);
-      mainWindow.setFullScreen(true);
-      mainWindow.show();
-    };
-   
-  });
 
   // #### Matching credentials #### //
   ipcMain.on('login', (event, credentials) => {
@@ -315,10 +273,6 @@ function showMainWindow() {
 
   // changing loging state //
   isLoging = false;
-  
-  // Send PC Information //
-  sendPCInfo();
-
   
   // Send PC Information //
   sendPCInfo();
@@ -437,8 +391,6 @@ function defaultCallback() {
 };
 
 function createWarningWindow(message, callback=defaultCallback){
-
-  isWarningWindow = true;
 
   isWarningWindow = true;
 
@@ -578,7 +530,6 @@ function createWarningWindow(message, callback=defaultCallback){
     // Close warning window //
     warningWindow.close();
     isWarningWindow = false;
-    isWarningWindow = false;
     setTimeout(()=>{
       captureScreen(callback);
     }, 2000);
@@ -586,34 +537,11 @@ function createWarningWindow(message, callback=defaultCallback){
     console.log("\nWarnig window closed ...");
     
     setWindowProperties();
-    
-    setWindowProperties();
 
   });
   
 };
 
-function setWindowProperties(){
-  
-  if(process.platform === "linux"){
-    
-    console.log("\nSetting windows properties Linux...")
-    mainWindow.setAlwaysOnTop(true);
-    mainWindow.maximize();
-
-  } else {
-    
-    mainWindow.fullScreenable = true;
-    mainWindow.setFullScreen(true);
-    mainWindow.setAlwaysOnTop(true);
-    mainWindow.minimizable = false;
-    mainWindow.resizable = false;
-    mainWindow.movable = false;
-    mainWindow.maximizable = false;
-
-  };
-  
-  
 function setWindowProperties(){
   
   if(process.platform === "linux"){
